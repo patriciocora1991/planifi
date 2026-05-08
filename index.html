@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Futsal Load Pro - Gestión de Cargas</title>
+    <title>Futsal Load Pro - Gestión Avanzada</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .custom-shadow { box-shadow: 0 4px 20px -2px rgba(0,0,0,0.1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .active-filter { background-color: #1e293b; color: white; border-color: #1e293b; }
+        .task-card:active { transform: scale(0.98); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 pb-24">
@@ -19,13 +21,13 @@
     <header class="bg-slate-900 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg">
         <div>
             <h1 class="text-xl font-bold flex items-center gap-2">
-                <i class="fas fa-heartbeat text-red-500"></i> Futsal Load Pro
+                <i class="fas fa-bolt text-yellow-400"></i> Futsal Performance
             </h1>
-            <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Periodización Táctica</p>
+            <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Elite Training System</p>
         </div>
-        <div class="bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center">
-            <i class="fas fa-cog text-slate-300"></i>
-        </div>
+        <button onclick="toggleNewTaskModal()" class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+            <i class="fas fa-plus"></i>
+        </button>
     </header>
 
     <main class="max-w-4xl mx-auto p-4">
@@ -33,171 +35,180 @@
         <!-- VISTA DASHBOARD -->
         <div id="view-dashboard" class="tab-content active space-y-6">
             <section>
-                <h2 class="text-lg font-bold mb-3 flex items-center gap-2 text-slate-700">
-                    <i class="far fa-calendar-alt text-blue-500"></i> Microciclo Actual
-                </h2>
-                <div class="grid grid-cols-5 gap-2" id="weekly-plan">
-                    <!-- Generado por JS -->
+                <div class="flex justify-between items-end mb-3">
+                    <h2 class="text-lg font-bold text-slate-700">Microciclo Actual</h2>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Estado de Carga</span>
                 </div>
+                <div class="grid grid-cols-5 gap-2" id="weekly-plan"></div>
             </section>
 
             <section>
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-slate-700">Sesiones Guardadas</h2>
-                    <button onclick="switchTab('planner')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm font-bold shadow-md transition-all">
-                        <i class="fas fa-plus"></i> Nueva Sesión
-                    </button>
+                    <h2 class="text-lg font-bold text-slate-700">Últimas Sesiones</h2>
+                    <button onclick="switchTab('planner')" class="text-blue-600 text-xs font-bold uppercase tracking-tight">Planificar</button>
                 </div>
-                <div id="sessions-list" class="space-y-3">
-                    <!-- Generado por JS -->
-                </div>
-            </section>
-
-            <section class="bg-indigo-900 text-white p-6 rounded-2xl shadow-xl border border-indigo-800">
-                <h3 class="font-bold mb-4 flex items-center gap-2">
-                    <i class="fas fa-bolt text-yellow-400"></i> Clave Metodológica
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div class="bg-white/10 p-4 rounded-xl border border-white/5">
-                        <p class="font-bold text-yellow-300 mb-1">Fatiga Neuromuscular</p>
-                        <p class="text-xs text-indigo-100">En Futsal, la toma de decisión constante fatiga más que correr. Transición = Alta Carga.</p>
-                    </div>
-                    <div class="bg-white/10 p-4 rounded-xl border border-white/5">
-                        <p class="font-bold text-red-300 mb-1">Regla de Oro</p>
-                        <p class="text-xs text-indigo-100">Si hay presión y espacios reducidos, el componente de aceleración/frenada es máximo.</p>
-                    </div>
-                </div>
+                <div id="sessions-list" class="space-y-3"></div>
             </section>
         </div>
 
         <!-- VISTA PLANIFICADOR -->
         <div id="view-planner" class="tab-content space-y-6">
             <header class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                <button onclick="switchTab('dashboard')" class="text-sm font-bold text-slate-500">← Volver</button>
-                <h2 class="font-bold text-slate-800">Planificador</h2>
-                <button onclick="saveSession()" class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-green-700">Guardar</button>
+                <button onclick="switchTab('dashboard')" class="text-sm font-bold text-slate-500 hover:text-slate-700">← Volver</button>
+                <h2 class="font-bold text-slate-800">Diseño de Sesión</h2>
+                <button onclick="saveSession()" id="btn-save" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-blue-700">Guardar</button>
             </header>
 
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fecha</label>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fecha de Sesión</label>
                         <input type="date" id="input-date" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
                     </div>
                     <div>
-                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Objetivo Táctico</label>
-                        <input type="text" id="input-objective" placeholder="Ej: Salida de presión" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Objetivo Principal</label>
+                        <input type="text" id="input-objective" placeholder="Ej: HIIT Corto + Transiciones" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
                     </div>
                 </div>
             </div>
 
-            <!-- Indicador de Carga Dinámico -->
-            <div id="load-indicator" class="p-5 rounded-2xl border-2 border-green-200 bg-green-50 shadow-sm flex justify-between items-center transition-all">
+            <!-- Indicador de Carga Proyectada -->
+            <div id="load-indicator" class="p-5 rounded-2xl border-2 border-slate-200 bg-white shadow-sm flex justify-between items-center">
                 <div class="flex items-center gap-4">
-                    <div id="indicator-bar" class="w-4 h-12 rounded-full bg-green-500 shadow-sm"></div>
+                    <div id="indicator-bar" class="w-4 h-12 rounded-full bg-slate-200"></div>
                     <div>
-                        <p class="text-[10px] font-black uppercase opacity-60 tracking-widest text-slate-600">Carga Proyectada</p>
-                        <p id="indicator-label" class="text-xl font-black text-green-600 uppercase">VERDE — Priming</p>
+                        <p class="text-[10px] font-black uppercase opacity-60 tracking-widest">Intensidad Proyectada</p>
+                        <p id="indicator-label" class="text-xl font-black text-slate-400 uppercase">Esperando Tareas</p>
                     </div>
                 </div>
                 <div class="text-right">
                     <div class="flex items-center gap-2 justify-end text-slate-700 font-bold">
                        <i class="fas fa-clock text-blue-500"></i> <span id="summary-time">0 min</span>
                     </div>
-                    <p class="text-xs font-bold text-slate-500">RPE Promedio: <span id="summary-rpe">0</span></p>
+                    <p class="text-xs font-bold text-slate-500 italic">RPE Ponderado: <span id="summary-rpe">0</span></p>
                 </div>
             </div>
 
+            <!-- Estructura de Trabajo -->
             <div class="space-y-3">
                 <h3 class="font-bold text-slate-700 px-1 flex items-center gap-2">
-                    <i class="fas fa-list-ul text-blue-500"></i> Tareas de la Sesión
+                    <i class="fas fa-layer-group text-blue-500"></i> Bloques de Trabajo
                 </h3>
-                <div id="current-tasks" class="space-y-2">
-                    <!-- Tareas agregadas por el usuario -->
-                </div>
+                <div id="current-tasks" class="space-y-2"></div>
             </div>
 
-            <div class="mt-8 space-y-6">
-                <h3 class="font-bold text-slate-700 px-1 border-l-4 border-blue-500 pl-3">Biblioteca Metodológica</h3>
-                <div id="library-container" class="space-y-6">
-                    <!-- Categorías y botones generados por JS -->
+            <!-- Biblioteca de Tareas Expandida -->
+            <div class="mt-8 space-y-4">
+                <div class="flex flex-col gap-3">
+                    <h3 class="font-bold text-slate-700">Biblioteca Metodológica</h3>
+                    <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2" id="filter-bar">
+                        <button onclick="filterLibrary('todos')" class="filter-btn active-filter px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 transition-all uppercase whitespace-nowrap" data-filter="todos">Todos</button>
+                        <button onclick="filterLibrary('HIIT')" class="filter-btn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 transition-all uppercase whitespace-nowrap" data-filter="HIIT">HIIT/RSA</button>
+                        <button onclick="filterLibrary('Reducidos')" class="filter-btn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 transition-all uppercase whitespace-nowrap" data-filter="Reducidos">Reducidos</button>
+                        <button onclick="filterLibrary('Técnico')" class="filter-btn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 transition-all uppercase whitespace-nowrap" data-filter="Técnico">Técnico</button>
+                        <button onclick="filterLibrary('Velocidad')" class="filter-btn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-200 transition-all uppercase whitespace-nowrap" data-filter="Velocidad">Velocidad/Tempo</button>
+                    </div>
                 </div>
+                <div id="library-container" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
             </div>
         </div>
 
         <!-- VISTA HISTORIAL -->
         <div id="view-history" class="tab-content space-y-6">
-            <h2 class="text-lg font-bold text-slate-700">Historial Completo</h2>
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 border-b border-slate-100">
-                        <tr>
-                            <th class="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase">Fecha</th>
-                            <th class="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase">Carga</th>
-                            <th class="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase text-right">Tiempo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-table-body" class="divide-y divide-slate-50">
-                        <!-- Historial generado por JS -->
-                    </tbody>
-                </table>
-            </div>
+            <h2 class="text-lg font-bold text-slate-700">Historial de Cargas</h2>
+            <div id="history-content" class="space-y-4"></div>
         </div>
 
     </main>
 
-    <!-- Navigation Bar -->
+    <!-- Modal Nueva Actividad -->
+    <div id="task-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+            <div class="bg-slate-900 p-6 text-white flex justify-between items-center">
+                <h3 class="font-bold">Crear Nueva Tarea</h3>
+                <button onclick="toggleNewTaskModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Nombre de la Actividad</label>
+                    <input type="text" id="new-task-name" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl" placeholder="Ej: HIIT 15x15">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Tipo</label>
+                        <select id="new-task-cat" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl">
+                            <option value="HIIT">HIIT/RSA</option>
+                            <option value="Reducidos">Reducidos</option>
+                            <option value="Velocidad">Velocidad/Tempo</option>
+                            <option value="Técnico">Técnico</option>
+                            <option value="Táctico">Táctico</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">RPE (1-10)</label>
+                        <input type="number" id="new-task-rpe" min="1" max="10" value="7" class="w-full mt-1 p-3 bg-slate-50 border rounded-xl">
+                    </div>
+                </div>
+                <button onclick="createNewTask()" class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold hover:bg-blue-700">Añadir a Biblioteca</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nav -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 h-20 flex items-center justify-around px-4 z-50">
         <button onclick="switchTab('dashboard')" class="flex flex-col items-center gap-1 text-blue-600 nav-btn" data-tab="dashboard">
-            <i class="fas fa-chart-pie text-xl"></i>
-            <span class="text-[10px] font-black uppercase">Panel</span>
+            <i class="fas fa-chart-bar text-xl"></i>
+            <span class="text-[10px] font-black uppercase">Home</span>
         </button>
-        <div class="relative -top-6">
-            <button onclick="switchTab('planner')" class="bg-slate-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white active:scale-90 transition-all">
-                <i class="fas fa-plus text-xl"></i>
-            </button>
-        </div>
+        <button onclick="switchTab('planner')" class="flex flex-col items-center gap-1 text-slate-400 nav-btn" data-tab="planner">
+            <i class="fas fa-calendar-plus text-xl"></i>
+            <span class="text-[10px] font-black uppercase">Sesión</span>
+        </button>
         <button onclick="switchTab('history')" class="flex flex-col items-center gap-1 text-slate-400 nav-btn" data-tab="history">
-            <i class="fas fa-history text-xl"></i>
-            <span class="text-[10px] font-black uppercase">Historial</span>
+            <i class="fas fa-file-invoice text-xl"></i>
+            <span class="text-[10px] font-black uppercase">Archivo</span>
         </button>
     </nav>
 
     <script>
-        // --- CONSTANTES Y DATOS ---
-        const CATEGORIAS = [
-            { id: 'rondos', nombre: 'Rondos', icono: '🔄' },
-            { id: 'transiciones', nombre: 'Transiciones', icono: '⚡' },
-            { id: 'reducido', nombre: 'Juego Reducido', icono: '🏟️' },
-            { id: 'presion', nombre: 'Presión/Defensa', icono: '🛡️' }
+        // --- BASE DE DATOS METODOLÓGICA ---
+        let TAREAS_BASE = [
+            // HIIT & RSA
+            { id: 101, cat: 'HIIT', nombre: 'HIIT Corto (10"x10")', color: 'ROJO', rpe: 9 },
+            { id: 102, cat: 'HIIT', nombre: 'HIIT Medio (30"x30")', color: 'NARANJA', rpe: 8 },
+            { id: 103, cat: 'HIIT', nombre: 'RSA (Sprints Repetidos)', color: 'ROJO', rpe: 10 },
+            { id: 104, cat: 'HIIT', nombre: 'HIIT Largo (2\'x2\')', color: 'NARANJA', rpe: 7 },
+            
+            // REDUCIDOS
+            { id: 201, cat: 'Reducidos', nombre: 'Reducido 3v3 SIN apoyos', color: 'ROJO', rpe: 9 },
+            { id: 202, cat: 'Reducidos', nombre: 'Reducido 3v3 CON apoyos', color: 'NARANJA', rpe: 7 },
+            { id: 203, cat: 'Reducidos', nombre: 'Reducido 4v4 SIN apoyos', color: 'NARANJA', rpe: 8 },
+            { id: 204, cat: 'Reducidos', nombre: 'Reducido 2v2 Intenso', color: 'ROJO', rpe: 10 },
+            
+            // VELOCIDAD & TEMPO
+            { id: 301, cat: 'Velocidad', nombre: 'Velocidad Lineal (Sprints)', color: 'ROJO', rpe: 9 },
+            { id: 302, cat: 'Velocidad', nombre: 'Tempo Runs (Lineal)', color: 'AMARILLO', rpe: 5 },
+            { id: 303, cat: 'Velocidad', nombre: 'Agilidad Reactiva', color: 'NARANJA', rpe: 7 },
+            
+            // TÉCNICO / TÁCTICO
+            { id: 401, cat: 'Técnico', nombre: 'Rondo 4v1', color: 'VERDE', rpe: 3 },
+            { id: 402, cat: 'Técnico', nombre: 'Circuito Técnico', color: 'AMARILLO', rpe: 4 }
         ];
 
-        const TAREAS_DB = [
-            { id: 1, cat: 'rondos', nombre: 'Rondo técnico simple', color: 'VERDE', rpe: 3 },
-            { id: 2, cat: 'rondos', nombre: 'Rondo presión temporal', color: 'AMARILLO', rpe: 5 },
-            { id: 3, cat: 'rondos', nombre: 'Rondo transición inmediata', color: 'NARANJA', rpe: 7 },
-            { id: 4, cat: 'rondos', nombre: 'Rondo competitivo castigo', color: 'ROJO', rpe: 9 },
-            { id: 5, cat: 'transiciones', nombre: '2v1 técnico', color: 'AMARILLO', rpe: 5 },
-            { id: 6, cat: 'transiciones', nombre: '3v2 ida y vuelta', color: 'NARANJA', rpe: 7 },
-            { id: 7, cat: 'transiciones', nombre: 'Oleadas continuas', color: 'ROJO', rpe: 10 },
-            { id: 8, cat: 'reducido', nombre: '4v4 intenso', color: 'ROJO', rpe: 9 },
-            { id: 9, cat: 'reducido', nombre: '3v3 corto', color: 'NARANJA', rpe: 7 },
-            { id: 10, cat: 'presion', nombre: 'Presión continua hombre a hombre', color: 'ROJO', rpe: 9 }
-        ];
-
-        const SEMAFORO_STYLE = {
-            VERDE: { bg: 'bg-green-500', text: 'text-green-600', border: 'border-green-200', label: 'Baja / Priming' },
-            AMARILLO: { bg: 'bg-yellow-400', text: 'text-yellow-600', border: 'border-yellow-200', label: 'Media / Baja' },
-            NARANJA: { bg: 'bg-orange-500', text: 'text-orange-600', border: 'border-orange-200', label: 'Media / Alta' },
-            ROJO: { bg: 'bg-red-600', text: 'text-red-600', border: 'border-red-200', label: 'Alta Carga' }
+        const SEMAFOROS = {
+            VERDE: { bg: 'bg-green-500', text: 'text-green-600', border: 'border-green-200', label: 'Baja' },
+            AMARILLO: { bg: 'bg-yellow-400', text: 'text-yellow-600', border: 'border-yellow-200', label: 'Media' },
+            NARANJA: { bg: 'bg-orange-500', text: 'text-orange-600', border: 'border-orange-200', label: 'Alta' },
+            ROJO: { bg: 'bg-red-600', text: 'text-red-600', border: 'border-red-200', label: 'Extrema' }
         };
 
-        // --- ESTADO DE LA APP ---
+        // --- ESTADO ---
         let currentSessionTasks = [];
-        let savedSessions = JSON.parse(localStorage.getItem('futsal_sessions')) || [];
+        let savedSessions = JSON.parse(localStorage.getItem('futsal_v3_sessions')) || [];
+        let customTasks = JSON.parse(localStorage.getItem('futsal_v3_custom')) || [];
+        let currentFilter = 'todos';
 
-        // --- FUNCIONES CORE ---
-
+        // --- CORE LOGIC ---
         function init() {
             renderWeeklyPlan();
             renderSessionsList();
@@ -209,63 +220,74 @@
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.getElementById(`view-${tabId}`).classList.add('active');
             
-            // Estilos nav
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                if(btn.dataset.tab === tabId) btn.classList.add('text-blue-600');
-                else btn.classList.remove('text-blue-600', 'text-slate-400');
-                if(!btn.classList.contains('text-blue-600')) btn.classList.add('text-slate-400');
+                const isActive = btn.dataset.tab === tabId;
+                btn.classList.toggle('text-blue-600', isActive);
+                btn.classList.toggle('text-slate-400', !isActive);
             });
 
-            if(tabId === 'history') renderHistoryTable();
+            if(tabId === 'history') renderHistoryFull();
             if(tabId === 'dashboard') renderSessionsList();
         }
 
-        function renderWeeklyPlan() {
-            const container = document.getElementById('weekly-plan');
-            const plan = [
-                { dia: 'MAR', col: 'bg-red-600', label: 'Máxima' },
-                { dia: 'MIE', col: 'bg-orange-500', label: 'Táctica' },
-                { dia: 'JUE', col: 'bg-yellow-400', label: 'Ajuste' },
-                { dia: 'VIE', col: 'bg-green-500', label: 'Priming' },
-                { dia: 'SAB', col: 'bg-blue-500', label: 'PARTIDO' }
-            ];
-            container.innerHTML = plan.map(p => `
-                <div class="flex flex-col items-center">
-                    <div class="w-full h-24 rounded-xl ${p.col} flex flex-col items-center justify-center text-white shadow-md border border-white/10">
-                        <span class="font-bold text-sm">${p.dia}</span>
-                        <span class="text-[10px] text-center px-1 font-medium leading-tight opacity-90">${p.label}</span>
-                    </div>
-                </div>
-            `).join('');
+        function toggleNewTaskModal() {
+            const modal = document.getElementById('task-modal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
+
+        function createNewTask() {
+            const name = document.getElementById('new-task-name').value;
+            const cat = document.getElementById('new-task-cat').value;
+            const rpe = parseInt(document.getElementById('new-task-rpe').value);
+            
+            if(!name) return;
+
+            let color = 'VERDE';
+            if(rpe >= 9) color = 'ROJO';
+            else if(rpe >= 7) color = 'NARANJA';
+            else if(rpe >= 5) color = 'AMARILLO';
+
+            const newTask = { id: Date.now(), cat, nombre: name, color, rpe };
+            customTasks.push(newTask);
+            localStorage.setItem('futsal_v3_custom', JSON.stringify(customTasks));
+            
+            renderLibrary();
+            toggleNewTaskModal();
+            document.getElementById('new-task-name').value = '';
+        }
+
+        function filterLibrary(cat) {
+            currentFilter = cat;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active-filter', btn.dataset.filter === cat);
+            });
+            renderLibrary();
         }
 
         function renderLibrary() {
             const container = document.getElementById('library-container');
-            container.innerHTML = CATEGORIAS.map(cat => `
-                <div class="space-y-3">
-                    <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        ${cat.icono} ${cat.nombre}
-                    </h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        ${TAREAS_DB.filter(t => t.cat === cat.id).map(t => `
-                            <button onclick="addTaskToSession(${t.id})" class="bg-white p-4 rounded-2xl border border-slate-200 text-left hover:border-blue-400 hover:shadow-md transition-all flex justify-between items-center group active:scale-[0.98]">
-                                <div>
-                                    <p class="text-sm font-bold text-slate-700">${t.nombre}</p>
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <div class="w-2 h-2 rounded-full ${SEMAFORO_STYLE[t.color].bg}"></div>
-                                        <p class="text-[10px] text-slate-400 font-bold uppercase">Carga: ${t.color}</p>
-                                    </div>
-                                </div>
-                                <i class="fas fa-plus text-slate-300 group-hover:text-blue-500"></i>
-                            </button>
-                        `).join('')}
+            const allTasks = [...TAREAS_BASE, ...customTasks];
+            
+            const filtered = currentFilter === 'todos' 
+                ? allTasks 
+                : allTasks.filter(t => t.cat === currentFilter);
+
+            container.innerHTML = filtered.map(t => `
+                <button onclick="addTaskToSession(${t.id})" class="task-card bg-white p-4 rounded-2xl border border-slate-200 text-left hover:border-blue-400 shadow-sm transition-all flex justify-between items-center">
+                    <div>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-tighter">${t.cat}</p>
+                        <p class="text-sm font-bold text-slate-700 leading-tight">${t.nombre}</p>
+                        <p class="text-[10px] text-slate-400 mt-1">RPE Sugerido: ${t.rpe}</p>
                     </div>
-                </div>
+                    <div class="w-3 h-3 rounded-full ${SEMAFOROS[t.color].bg} shadow-inner"></div>
+                </button>
             `).join('');
         }
 
         function addTaskToSession(id) {
-            const base = TAREAS_DB.find(t => t.id === id);
+            const allTasks = [...TAREAS_BASE, ...customTasks];
+            const base = allTasks.find(t => t.id === id);
             const taskInstance = { 
                 ...base, 
                 instanceId: Date.now() + Math.random(),
@@ -273,6 +295,14 @@
             };
             currentSessionTasks.push(taskInstance);
             updatePlannerUI();
+        }
+
+        function updateTaskTime(instanceId, newTime) {
+            const task = currentSessionTasks.find(t => t.instanceId == instanceId);
+            if(task) {
+                task.duracion = parseInt(newTime) || 0;
+                calculateOverallLoad();
+            }
         }
 
         function removeTask(instanceId) {
@@ -283,21 +313,26 @@
         function updatePlannerUI() {
             const container = document.getElementById('current-tasks');
             if(currentSessionTasks.length === 0) {
-                container.innerHTML = `<div class="text-center py-12 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 italic text-sm">Seleccioná tareas de la biblioteca</div>`;
+                container.innerHTML = `<div class="text-center py-10 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 italic text-sm">Agregá bloques de la biblioteca para calcular carga</div>`;
             } else {
                 container.innerHTML = currentSessionTasks.map((t, idx) => `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center animate-in slide-in-from-right-5 duration-200">
                         <div class="flex items-center gap-3">
-                            <div class="bg-slate-900 text-white w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs">${idx + 1}</div>
+                            <div class="bg-slate-800 text-white w-6 h-6 rounded flex items-center justify-center font-bold text-[10px]">${idx + 1}</div>
                             <div>
                                 <p class="font-bold text-slate-800 text-sm">${t.nombre}</p>
-                                <div class="flex gap-2 mt-0.5">
-                                    <span class="text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${SEMAFORO_STYLE[t.color].bg} text-white">${t.color}</span>
-                                    <span class="text-[10px] text-slate-500 font-bold">${t.duracion} min</span>
-                                </div>
+                                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-wide">${t.cat} | RPE ${t.rpe}</p>
                             </div>
                         </div>
-                        <button onclick="removeTask(${t.instanceId})" class="p-2 text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center bg-slate-50 rounded-lg px-2 border">
+                                <input type="number" value="${t.duracion}" 
+                                    onchange="updateTaskTime(${t.instanceId}, this.value)"
+                                    class="w-10 bg-transparent text-center font-bold text-sm p-1 outline-none">
+                                <span class="text-[10px] font-bold text-slate-400">min</span>
+                            </div>
+                            <button onclick="removeTask(${t.instanceId})" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash-alt text-sm"></i></button>
+                        </div>
                     </div>
                 `).join('');
             }
@@ -310,30 +345,32 @@
                 return;
             }
 
-            let totalRpe = 0;
+            let weightedRpeSum = 0;
             let totalTime = 0;
-            let counts = { ROJO: 0, NARANJA: 0, AMARILLO: 0, VERDE: 0 };
+            let highestRpe = 0;
 
             currentSessionTasks.forEach(t => {
-                totalRpe += t.rpe;
+                weightedRpeSum += (t.rpe * t.duracion);
                 totalTime += t.duracion;
-                counts[t.color]++;
+                if(t.rpe > highestRpe) highestRpe = t.rpe;
             });
 
-            let finalColor = 'VERDE';
-            if (counts.ROJO > 0 || counts.NARANJA > 1) finalColor = 'ROJO';
-            else if (counts.NARANJA > 0 || counts.AMARILLO > 2) finalColor = 'NARANJA';
-            else if (counts.AMARILLO > 0) finalColor = 'AMARILLO';
+            const rpePonderado = totalTime > 0 ? (weightedRpeSum / totalTime).toFixed(1) : 0;
+            
+            let color = 'VERDE';
+            if(rpePonderado >= 8 || highestRpe >= 9) color = 'ROJO';
+            else if(rpePonderado >= 6) color = 'NARANJA';
+            else if(rpePonderado >= 4) color = 'AMARILLO';
 
-            updateIndicator(finalColor, (totalRpe / currentSessionTasks.length).toFixed(1), totalTime);
+            updateIndicator(color, rpePonderado, totalTime);
         }
 
         function updateIndicator(color, rpe, time) {
-            const style = SEMAFORO_STYLE[color];
+            const style = SEMAFOROS[color];
             const banner = document.getElementById('load-indicator');
-            banner.className = `p-5 rounded-2xl border-2 ${style.border} ${style.bg} bg-opacity-10 shadow-sm flex justify-between items-center transition-all duration-500`;
+            banner.className = `p-5 rounded-2xl border-2 ${style.border} ${style.bg} bg-opacity-10 shadow-sm flex justify-between items-center transition-all duration-300`;
             
-            document.getElementById('indicator-bar').className = `w-4 h-12 rounded-full ${style.bg} shadow-sm animate-pulse`;
+            document.getElementById('indicator-bar').className = `w-4 h-12 rounded-full ${style.bg} shadow-sm`;
             document.getElementById('indicator-label').className = `text-xl font-black ${style.text} uppercase`;
             document.getElementById('indicator-label').innerText = `${color} — ${style.label}`;
             
@@ -343,24 +380,21 @@
 
         function saveSession() {
             if(currentSessionTasks.length === 0) return;
+            const color = document.getElementById('indicator-label').innerText.split(' — ')[0];
             
-            // Obtener el color actual del indicador (extrayendo el texto)
-            const colorLabel = document.getElementById('indicator-label').innerText.split(' — ')[0];
-
-            const newSession = {
+            const session = {
                 id: Date.now(),
                 fecha: document.getElementById('input-date').value,
-                objetivo: document.getElementById('input-objective').value || 'Sin objetivo',
-                tareasCount: currentSessionTasks.length,
+                objetivo: document.getElementById('input-objective').value || 'Sesión sin título',
                 totalTime: document.getElementById('summary-time').innerText,
-                color: colorLabel,
-                rpe: document.getElementById('summary-rpe').innerText
+                rpe: document.getElementById('summary-rpe').innerText,
+                color: color,
+                tareas: [...currentSessionTasks]
             };
 
-            savedSessions.unshift(newSession);
-            localStorage.setItem('futsal_sessions', JSON.stringify(savedSessions));
+            savedSessions.unshift(session);
+            localStorage.setItem('futsal_v3_sessions', JSON.stringify(savedSessions));
             
-            // Reset y volver
             currentSessionTasks = [];
             document.getElementById('input-objective').value = '';
             updatePlannerUI();
@@ -370,44 +404,69 @@
         function renderSessionsList() {
             const container = document.getElementById('sessions-list');
             if(savedSessions.length === 0) {
-                container.innerHTML = `
-                    <div class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center text-slate-400">
-                        <i class="fas fa-clipboard-list text-5xl mb-3 opacity-20"></i>
-                        <p class="font-medium">No hay sesiones esta semana.</p>
-                    </div>`;
+                container.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-slate-400 border border-dashed border-slate-200">Sin sesiones registradas esta semana</div>`;
                 return;
             }
-
-            container.innerHTML = savedSessions.slice(0, 5).map(s => `
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between group hover:border-blue-200 transition-colors">
-                    <div class="flex items-center gap-4">
-                        <div class="w-3 h-12 rounded-full ${SEMAFORO_STYLE[s.color].bg} shadow-sm"></div>
+            container.innerHTML = savedSessions.slice(0, 3).map(s => `
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl ${SEMAFOROS[s.color].bg} flex items-center justify-center text-white font-black text-xs shadow-sm">${s.rpe}</div>
                         <div>
-                            <p class="font-bold text-slate-800">${s.fecha} - <span class="text-blue-600">${s.objetivo}</span></p>
-                            <p class="text-xs text-slate-500 font-medium">${s.tareasCount} tareas • ${s.totalTime} • RPE ${s.rpe}</p>
+                            <p class="font-bold text-slate-800 text-sm leading-tight">${s.objetivo}</p>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">${s.fecha} • ${s.totalTime}</p>
                         </div>
                     </div>
-                    <i class="fas fa-chevron-right text-slate-300"></i>
+                    <i class="fas fa-check-circle text-green-500/30"></i>
                 </div>
             `).join('');
         }
 
-        function renderHistoryTable() {
-            const body = document.getElementById('history-table-body');
-            body.innerHTML = savedSessions.map(s => `
-                <tr class="hover:bg-slate-50/50">
-                    <td class="px-4 py-3 font-bold text-slate-700">${s.fecha}</td>
-                    <td class="px-4 py-3">
-                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black text-white ${SEMAFORO_STYLE[s.color].bg}">
-                            ${s.color}
-                        </span>
-                    </td>
-                    <td class="px-4 py-3 text-right font-medium text-slate-500">${s.totalTime}</td>
-                </tr>
+        function renderHistoryFull() {
+            const container = document.getElementById('history-content');
+            if(savedSessions.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 opacity-20"><i class="fas fa-folder-open text-6xl"></i></div>`;
+                return;
+            }
+            container.innerHTML = savedSessions.map(s => `
+                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest">${s.fecha}</p>
+                            <h4 class="font-black text-slate-800 text-lg leading-tight">${s.objetivo}</h4>
+                        </div>
+                        <span class="px-2 py-1 rounded-lg text-[9px] font-black text-white ${SEMAFOROS[s.color].bg}">${s.color}</span>
+                    </div>
+                    <div class="flex gap-4 text-[11px] font-bold text-slate-500 border-b border-slate-50 pb-2">
+                        <span><i class="fas fa-clock mr-1 text-blue-500"></i> ${s.totalTime}</span>
+                        <span><i class="fas fa-heartbeat mr-1 text-red-500"></i> RPE ${s.rpe}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1 mt-2">
+                        ${s.tareas.map(t => `<span class="text-[9px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-600 font-bold border border-slate-200">${t.nombre}</span>`).join('')}
+                    </div>
+                </div>
             `).join('');
         }
 
-        // Ejecutar al cargar
+        function renderWeeklyPlan() {
+            const container = document.getElementById('weekly-plan');
+            const plan = [
+                { d: 'MAR', c: 'bg-red-600', l: 'Alta' },
+                { d: 'MIE', c: 'bg-orange-500', l: 'Tact' },
+                { d: 'JUE', c: 'bg-yellow-500', l: 'Ajuste' },
+                { d: 'VIE', c: 'bg-green-500', l: 'Baja' },
+                { d: 'SAB', c: 'bg-blue-600', l: 'GAME' }
+            ];
+            container.innerHTML = plan.map(p => `
+                <div class="bg-white rounded-xl overflow-hidden border border-slate-100 shadow-sm flex flex-col items-center">
+                    <div class="w-full ${p.c} py-1 text-center"><span class="text-[9px] font-black text-white uppercase">${p.d}</span></div>
+                    <div class="py-3 text-center">
+                        <p class="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">${p.l}</p>
+                        <div class="w-1.5 h-1.5 rounded-full bg-slate-200 mx-auto"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         init();
     </script>
 </body>
