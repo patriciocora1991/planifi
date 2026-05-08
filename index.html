@@ -1,0 +1,787 @@
+import React, { useState, useEffect, useMemo } from 'react';
+
+import { 
+
+  BarChart3, 
+
+  Calendar, 
+
+  ClipboardList, 
+
+  Plus, 
+
+  Trash2, 
+
+  AlertTriangle, 
+
+  Settings, 
+
+  Info,
+
+  ChevronRight,
+
+  Zap,
+
+  Activity,
+
+  Users
+
+} from 'lucide-react';
+
+
+
+const CATEGORIAS_TAREAS = [
+
+  { id: 'rondos', nombre: 'Rondos', icono: '🔄' },
+
+  { id: 'posesion', nombre: 'Posesión', icono: '⚽' },
+
+  { id: 'transiciones', nombre: 'Transiciones', icono: '⚡' },
+
+  { id: 'reducido', nombre: 'Juego Reducido', icono: '🏟️' },
+
+  { id: 'analitico', nombre: 'Analíticas', icono: '🧘' },
+
+  { id: 'balon_parado', nombre: 'Balón Parado', icono: '🎯' },
+
+  { id: 'presion', nombre: 'Presión/Defensa', icono: '🛡️' }
+
+];
+
+
+
+const SEMAFORO = {
+
+  VERDE: { color: 'bg-green-500', text: 'text-green-600', border: 'border-green-200', label: 'Baja / Priming', rpe: '2-4' },
+
+  AMARILLO: { color: 'bg-yellow-400', text: 'text-yellow-600', border: 'border-yellow-200', label: 'Media / Baja', rpe: '4-6' },
+
+  NARANJA: { color: 'bg-orange-500', text: 'text-orange-600', border: 'border-orange-200', label: 'Media / Alta', rpe: '6-8' },
+
+  ROJO: { color: 'bg-red-600', text: 'text-red-600', border: 'border-red-200', label: 'Alta Carga', rpe: '8-10' }
+
+};
+
+
+
+const TAREAS_PREDEFINIDAS = [
+
+  { id: 1, cat: 'rondos', nombre: 'Rondo técnico simple', color: 'VERDE', cargaFisica: 'Baja', cargaTactiva: 'Baja' },
+
+  { id: 2, cat: 'rondos', nombre: 'Rondo presión temporal', color: 'AMARILLO', cargaFisica: 'Media Baja', cargaTactiva: 'Media' },
+
+  { id: 3, cat: 'rondos', nombre: 'Rondo transición inmediata', color: 'NARANJA', cargaFisica: 'Media Alta', cargaTactiva: 'Alta' },
+
+  { id: 4, cat: 'rondos', nombre: 'Rondo competitivo castigo', color: 'ROJO', cargaFisica: 'Alta', cargaTactiva: 'Alta' },
+
+  { id: 5, cat: 'transiciones', nombre: '2v1 técnico', color: 'AMARILLO' },
+
+  { id: 6, cat: 'transiciones', nombre: '3v2 ida y vuelta', color: 'NARANJA' },
+
+  { id: 7, cat: 'transiciones', nombre: 'Oleadas continuas', color: 'ROJO' },
+
+  { id: 8, cat: 'reducido', nombre: '4v4 intenso', color: 'ROJO' },
+
+  { id: 9, cat: 'reducido', nombre: '3v3 corto', color: 'NARANJA' },
+
+  { id: 10, cat: 'presion', nombre: 'Presión continua hombre a hombre', color: 'ROJO' }
+
+];
+
+
+
+const App = () => {
+
+  const [view, setView] = useState('dashboard'); // dashboard, planner, history
+
+  const [session, setSession] = useState({
+
+    fecha: new Date().toISOString().split('T')[0],
+
+    objetivoPrincipal: '',
+
+    tareas: []
+
+  });
+
+  const [sessions, setSessions] = useState([]);
+
+
+
+  // Cálculo de carga automática basado en la matriz de la información
+
+  const calculateColor = (params) => {
+
+    const score = (params.intensidad * 2) + params.complejidad + params.densidad + params.transiciones + params.velocidad;
+
+    if (score > 24) return 'ROJO';
+
+    if (score > 18) return 'NARANJA';
+
+    if (score > 10) return 'AMARILLO';
+
+    return 'VERDE';
+
+  };
+
+
+
+  const addTareaToSession = (tareaBase) => {
+
+    const nuevaTarea = {
+
+      ...tareaBase,
+
+      instanceId: Math.random().toString(36).substr(2, 9),
+
+      duracion: 15,
+
+      rpe: SEMAFORO[tareaBase.color].rpe.split('-')[1]
+
+    };
+
+    setSession(prev => ({
+
+      ...prev,
+
+      tareas: [...prev.tareas, nuevaTarea]
+
+    }));
+
+  };
+
+
+
+  const removeTarea = (id) => {
+
+    setSession(prev => ({
+
+      ...prev,
+
+      tareas: prev.tareas.filter(t => t.instanceId !== id)
+
+    }));
+
+  };
+
+
+
+  const saveSession = () => {
+
+    if (session.tareas.length === 0) return;
+
+    setSessions([...sessions, { ...session, id: Date.now() }]);
+
+    setSession({
+
+      fecha: new Date().toISOString().split('T')[0],
+
+      objetivoPrincipal: '',
+
+      tareas: []
+
+    });
+
+    setView('dashboard');
+
+  };
+
+
+
+  // Resumen de carga de la sesión actual
+
+  const sessionSummary = useMemo(() => {
+
+    if (session.tareas.length === 0) return { color: 'VERDE', rpeAvg: 0, totalTime: 0 };
+
+    const counts = { ROJO: 0, NARANJA: 0, AMARILLO: 0, VERDE: 0 };
+
+    let totalRpe = 0;
+
+    let totalTime = 0;
+
+    
+
+    session.tareas.forEach(t => {
+
+      counts[t.color]++;
+
+      totalRpe += parseInt(t.rpe);
+
+      totalTime += parseInt(t.duracion);
+
+    });
+
+
+
+    let finalColor = 'VERDE';
+
+    if (counts.ROJO > 0 || counts.NARANJA > 1) finalColor = 'ROJO';
+
+    else if (counts.NARANJA > 0 || counts.AMARILLO > 2) finalColor = 'NARANJA';
+
+    else if (counts.AMARILLO > 0) finalColor = 'AMARILLO';
+
+
+
+    return {
+
+      color: finalColor,
+
+      rpeAvg: (totalRpe / session.tareas.length).toFixed(1),
+
+      totalTime
+
+    };
+
+  }, [session.tareas]);
+
+
+
+  return (
+
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20">
+
+      {/* Header */}
+
+      <header className="bg-slate-900 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg">
+
+        <div>
+
+          <h1 className="text-xl font-bold flex items-center gap-2">
+
+            <Activity className="text-red-500" /> Futsal Load Pro
+
+          </h1>
+
+          <p className="text-xs text-slate-400">Sistema de Periodización Táctica</p>
+
+        </div>
+
+        <div className="bg-slate-800 rounded-full p-2">
+
+          <Settings size={20} className="text-slate-300" />
+
+        </div>
+
+      </header>
+
+
+
+      {/* Main Content */}
+
+      <main className="max-w-4xl mx-auto p-4">
+
+        
+
+        {view === 'dashboard' && (
+
+          <div className="space-y-6 animate-in fade-in duration-500">
+
+            {/* Resumen Semanal */}
+
+            <section>
+
+              <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+
+                <Calendar size={20} /> Microciclo Actual
+
+              </h2>
+
+              <div className="grid grid-cols-5 gap-2">
+
+                {['MAR', 'MIE', 'JUE', 'VIE', 'SAB'].map((dia, idx) => {
+
+                  const colors = ['bg-red-600', 'bg-orange-500', 'bg-yellow-400', 'bg-green-500', 'bg-blue-500'];
+
+                  const labels = ['Carga Máx', 'Tact/Alta', 'Ajuste', 'Priming', 'PARTIDO'];
+
+                  return (
+
+                    <div key={dia} className="flex flex-col items-center">
+
+                      <div className={`w-full h-24 rounded-lg ${colors[idx]} flex flex-col items-center justify-center text-white shadow-sm border border-black/5`}>
+
+                        <span className="font-bold text-sm">{dia}</span>
+
+                        <span className="text-[10px] text-center px-1 opacity-90">{labels[idx]}</span>
+
+                      </div>
+
+                    </div>
+
+                  );
+
+                })}
+
+              </div>
+
+            </section>
+
+
+
+            {/* Ultimas Sesiones */}
+
+            <section>
+
+              <div className="flex justify-between items-center mb-3">
+
+                <h2 className="text-lg font-bold">Sesiones Recientes</h2>
+
+                <button 
+
+                  onClick={() => setView('planner')}
+
+                  className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 shadow-md active:scale-95 transition-transform"
+
+                >
+
+                  <Plus size={16} /> Nueva Sesión
+
+                </button>
+
+              </div>
+
+              
+
+              {sessions.length === 0 ? (
+
+                <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400">
+
+                  <ClipboardList size={40} className="mx-auto mb-2 opacity-20" />
+
+                  <p>No hay sesiones registradas esta semana.</p>
+
+                </div>
+
+              ) : (
+
+                <div className="space-y-3">
+
+                  {sessions.map(s => (
+
+                    <div key={s.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
+
+                      <div className="flex items-center gap-4">
+
+                        <div className={`w-3 h-12 rounded-full ${SEMAFORO[s.color || 'VERDE'].color}`} />
+
+                        <div>
+
+                          <p className="font-bold">{new Date(s.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric' })}</p>
+
+                          <p className="text-sm text-slate-500">{s.tareas.length} tareas • {s.totalTime} min</p>
+
+                        </div>
+
+                      </div>
+
+                      <ChevronRight className="text-slate-300" />
+
+                    </div>
+
+                  ))}
+
+                </div>
+
+              )}
+
+            </section>
+
+
+
+            {/* Indicadores Clave */}
+
+            <section className="bg-indigo-900 text-white p-6 rounded-2xl shadow-xl">
+
+              <h3 className="font-bold mb-4 flex items-center gap-2">
+
+                <Zap className="text-yellow-400" /> Recordatorio Metodológico
+
+              </h3>
+
+              <div className="grid grid-cols-1 gap-4 text-sm">
+
+                <div className="bg-white/10 p-3 rounded-lg border border-white/10">
+
+                  <p className="font-semibold text-yellow-300">Fatiga Cognitiva</p>
+
+                  <p className="text-xs opacity-80">El futsal fatiga desde lo neuromuscular. Si hay transición y presión, es Naranja o Rojo.</p>
+
+                </div>
+
+                <div className="bg-white/10 p-3 rounded-lg border border-white/10">
+
+                  <p className="font-semibold text-red-300">Regla 4v4</p>
+
+                  <p className="text-xs opacity-80">Un 4v4 pequeño puede fatigar más que 20' de carrera continua por las aceleraciones y frenadas.</p>
+
+                </div>
+
+              </div>
+
+            </section>
+
+          </div>
+
+        )}
+
+
+
+        {view === 'planner' && (
+
+          <div className="space-y-6 animate-in slide-in-from-right duration-300">
+
+            <header className="flex justify-between items-center">
+
+              <button onClick={() => setView('dashboard')} className="text-sm text-slate-500">← Cancelar</button>
+
+              <h2 className="font-bold">Nueva Sesión</h2>
+
+              <button 
+
+                onClick={saveSession}
+
+                className="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm font-bold"
+
+              >
+
+                Guardar
+
+              </button>
+
+            </header>
+
+
+
+            {/* Configuración Básica */}
+
+            <div className="bg-white p-4 rounded-xl shadow-sm space-y-4">
+
+              <div>
+
+                <label className="text-xs font-bold text-slate-500 uppercase">Fecha</label>
+
+                <input 
+
+                  type="date" 
+
+                  value={session.fecha}
+
+                  onChange={(e) => setSession({...session, fecha: e.target.value})}
+
+                  className="w-full mt-1 p-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+
+                />
+
+              </div>
+
+              <div>
+
+                <label className="text-xs font-bold text-slate-500 uppercase">Objetivo Táctico</label>
+
+                <input 
+
+                  type="text" 
+
+                  placeholder="Ej: Salida de presión / Defensa de cambios"
+
+                  value={session.objetivoPrincipal}
+
+                  onChange={(e) => setSession({...session, objetivoPrincipal: e.target.value})}
+
+                  className="w-full mt-1 p-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+
+                />
+
+              </div>
+
+            </div>
+
+
+
+            {/* Resumen de Carga Estimada */}
+
+            <div className={`p-4 rounded-xl border-2 ${SEMAFORO[sessionSummary.color].border} ${SEMAFORO[sessionSummary.color].color} bg-opacity-10 flex justify-between items-center`}>
+
+              <div>
+
+                <p className="text-xs font-bold uppercase opacity-60">Carga Estimada</p>
+
+                <p className={`text-lg font-black ${SEMAFORO[sessionSummary.color].text}`}>
+
+                  {sessionSummary.color} — {SEMAFORO[sessionSummary.color].label}
+
+                </p>
+
+              </div>
+
+              <div className="text-right">
+
+                <p className="text-sm font-bold">{sessionSummary.totalTime} min</p>
+
+                <p className="text-xs opacity-60">RPE: {sessionSummary.rpeAvg}</p>
+
+              </div>
+
+            </div>
+
+
+
+            {/* Lista de Tareas */}
+
+            <div className="space-y-3">
+
+              <h3 className="font-bold flex items-center gap-2 px-1">
+
+                <ClipboardList size={18} /> Estructura de Sesión
+
+              </h3>
+
+              {session.tareas.length === 0 ? (
+
+                <div className="text-center py-10 bg-slate-100 rounded-xl text-slate-400 text-sm">
+
+                  Aún no has sumado tareas. Buscalas abajo.
+
+                </div>
+
+              ) : (
+
+                session.tareas.map((t, idx) => (
+
+                  <div key={t.instanceId} className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center group">
+
+                    <div className="flex items-center gap-3">
+
+                      <div className="bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs">
+
+                        {idx + 1}
+
+                      </div>
+
+                      <div>
+
+                        <p className="font-bold text-sm">{t.nombre}</p>
+
+                        <div className="flex gap-2 items-center">
+
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${SEMAFORO[t.color].color} text-white`}>
+
+                            {t.color}
+
+                          </span>
+
+                          <span className="text-[10px] text-slate-400 font-medium">
+
+                            {t.duracion} min • RPE {t.rpe}
+
+                          </span>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    <button onClick={() => removeTarea(t.instanceId)} className="text-slate-300 hover:text-red-500">
+
+                      <Trash2 size={18} />
+
+                    </button>
+
+                  </div>
+
+                ))
+
+              )}
+
+            </div>
+
+
+
+            {/* Selector de Tareas */}
+
+            <div className="space-y-4 pb-10">
+
+              <h3 className="font-bold px-1 mt-6">Biblioteca de Tareas</h3>
+
+              {CATEGORIAS_TAREAS.map(cat => (
+
+                <div key={cat.id} className="space-y-2">
+
+                  <h4 className="text-xs font-bold text-slate-400 uppercase ml-1">{cat.icono} {cat.nombre}</h4>
+
+                  <div className="grid grid-cols-1 gap-2">
+
+                    {TAREAS_PREDEFINIDAS.filter(t => t.cat === cat.id).map(t => (
+
+                      <button
+
+                        key={t.id}
+
+                        onClick={() => addTareaToSession(t)}
+
+                        className="bg-white p-3 rounded-xl border border-slate-200 text-left hover:border-blue-300 active:bg-blue-50 transition-colors flex justify-between items-center shadow-sm"
+
+                      >
+
+                        <div>
+
+                          <p className="text-sm font-semibold">{t.nombre}</p>
+
+                          <p className="text-[10px] text-slate-400">Predeterminado: {t.color}</p>
+
+                        </div>
+
+                        <Plus size={18} className="text-blue-500" />
+
+                      </button>
+
+                    ))}
+
+                  </div>
+
+                </div>
+
+              ))}
+
+              
+
+              {/* Tooltip de Metodologia */}
+
+              <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl mt-8">
+
+                <div className="flex gap-3">
+
+                  <Info className="text-yellow-600 flex-shrink-0" />
+
+                  <div className="text-xs text-yellow-800 leading-relaxed">
+
+                    <strong>Consejo Nahue:</strong> Las transiciones son las tareas más fatigosas. Combinan sprint, frenada, cambio de dirección y decisión a alta velocidad.
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        )}
+
+      </main>
+
+
+
+      {/* Navigation Bar */}
+
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex items-center justify-around px-4 z-50">
+
+        <button 
+
+          onClick={() => setView('dashboard')}
+
+          className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}
+
+        >
+
+          <BarChart3 size={20} />
+
+          <span className="text-[10px] font-bold uppercase">Dashboard</span>
+
+        </button>
+
+        <div className="relative -top-6">
+
+          <button 
+
+            onClick={() => setView('planner')}
+
+            className="bg-slate-900 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-slate-50 active:scale-90 transition-transform"
+
+          >
+
+            <Plus size={28} />
+
+          </button>
+
+        </div>
+
+        <button 
+
+          onClick={() => setView('history')}
+
+          className={`flex flex-col items-center gap-1 ${view === 'history' ? 'text-blue-600' : 'text-slate-400'}`}
+
+        >
+
+          <ClipboardList size={20} />
+
+          <span className="text-[10px] font-bold uppercase">Historial</span>
+
+        </button>
+
+      </nav>
+
+
+
+      {/* Info Overlay (Solo visible en vistas especificas si fuera necesario) */}
+
+      <div className="fixed top-20 right-4 hidden lg:block w-64 space-y-4">
+
+        <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-100">
+
+          <h4 className="font-bold text-sm mb-2">Escala RPE</h4>
+
+          <div className="space-y-2">
+
+            <div className="flex items-center gap-2 text-[10px]">
+
+              <div className="w-2 h-2 rounded-full bg-red-600"></div>
+
+              <span>8-10: "Termino destruido"</span>
+
+            </div>
+
+            <div className="flex items-center gap-2 text-[10px]">
+
+              <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+
+              <span>6-8: "Intenso pero recuperable"</span>
+
+            </div>
+
+            <div className="flex items-center gap-2 text-[10px]">
+
+              <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
+
+              <span>4-6: "Entrené bien pero fresco"</span>
+
+            </div>
+
+            <div className="flex items-center gap-2 text-[10px]">
+
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+
+              <span>2-4: "Mejor de lo que empecé"</span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  );
+
+};
+
+
+
+export default App;
