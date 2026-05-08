@@ -15,6 +15,11 @@
         .day-card { transition: all 0.2s ease; cursor: pointer; position: relative; }
         .day-card:hover { transform: translateY(-2px); }
         .metric-card { background: white; border: 1px solid #e2e8f0; border-radius: 1.5rem; padding: 1.25rem; }
+        
+        /* Estilos para el calendario mensual */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .calendar-day { aspect-ratio: 1 / 1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; position: relative; }
+        .has-data::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.8); }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 pb-24">
@@ -70,14 +75,34 @@
                 </div>
             </section>
 
+            <!-- NUEVO: CALENDARIO MENSUAL DE CARGAS -->
+            <section class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-black text-slate-700 uppercase tracking-tight">Calendario de Carga (30 días)</h2>
+                    <div class="flex gap-1">
+                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                        <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <div class="w-2 h-2 bg-red-600 rounded-full"></div>
+                    </div>
+                </div>
+                <div id="monthly-calendar" class="calendar-grid">
+                    <!-- Generado dinámicamente -->
+                </div>
+                <div id="calendar-day-detail" class="mt-4 p-3 bg-slate-50 rounded-xl hidden">
+                    <p id="detail-date" class="text-[9px] font-black text-slate-400 uppercase"></p>
+                    <p id="detail-info" class="text-xs font-bold text-slate-700"></p>
+                </div>
+            </section>
+
             <section>
                 <div class="flex justify-between items-end mb-3">
-                    <h2 class="text-lg font-bold text-slate-700">Microciclo Sugerido</h2>
-                    <span class="text-[9px] font-black text-blue-600 uppercase tracking-tighter bg-blue-50 px-2 py-0.5 rounded">Modelo MD</span>
+                    <h2 class="text-lg font-bold text-slate-700">Planificación MD</h2>
+                    <span class="text-[9px] font-black text-blue-600 uppercase tracking-tighter bg-blue-50 px-2 py-0.5 rounded">Microciclo Teórico</span>
                 </div>
                 <!-- Calendario Automático -->
                 <div class="grid grid-cols-7 gap-1.5" id="weekly-plan"></div>
-                <p class="text-[9px] text-slate-400 mt-2 italic">* Haz clic en el día para marcar el Partido (MD). El resto se ajustará automáticamente.</p>
+                <p class="text-[9px] text-slate-400 mt-2 italic">* Haz clic en el día para marcar el Partido (MD) de la semana actual.</p>
             </section>
 
             <section>
@@ -317,11 +342,8 @@
             const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
             const twentyEightDaysAgo = new Date(now.getTime() - (28 * 24 * 60 * 60 * 1000));
 
-            // Carga Aguda (7 días)
             let acute = 0;
-            // Carga Crónica (28 días)
             let chronicTotal = 0;
-            let lastRpeSum = 0;
             let sessionCount = 0;
 
             savedSessions.forEach(s => {
@@ -331,18 +353,16 @@
                 if (sDate >= sevenDaysAgo) acute += load;
                 if (sDate >= twentyEightDaysAgo) chronicTotal += load;
                 
-                if (sessionCount < 1) lastRpeSum = parseFloat(s.rpe);
                 sessionCount++;
             });
 
-            const chronic = chronicTotal / 4; // Promedio semanal en 4 semanas
+            const chronic = chronicTotal / 4; 
             const ratio = chronic > 0 ? (acute / chronic).toFixed(2) : 0;
 
-            // Actualizar UI
             document.getElementById('metric-acute').innerText = Math.round(acute);
             document.getElementById('metric-chronic').innerText = Math.round(chronic);
             document.getElementById('metric-ratio').innerText = ratio;
-            document.getElementById('metric-last-rpe').innerText = sessionCount > 0 ? savedSessions[0].rpe : "0.0";
+            document.getElementById('metric-last-rpe').innerText = savedSessions.length > 0 ? savedSessions[0].rpe : "0.0";
 
             const ratioDot = document.getElementById('ratio-dot');
             const ratioStatus = document.getElementById('ratio-status');
@@ -359,6 +379,52 @@
             } else {
                 ratioDot.className = "w-2 h-2 rounded-full bg-red-500";
                 ratioStatus.innerText = "PELIGRO DE LESIÓN";
+            }
+
+            renderMonthlyCalendar();
+        }
+
+        function renderMonthlyCalendar() {
+            const container = document.getElementById('monthly-calendar');
+            const detailBox = document.getElementById('calendar-day-detail');
+            container.innerHTML = '';
+            
+            const now = new Date();
+            // Generar últimos 28 días (4 semanas exactas para la cuadrícula)
+            for (let i = 27; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(now.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                const session = savedSessions.find(s => s.fecha === dateStr);
+                const dayNum = date.getDate();
+                
+                const dayEl = document.createElement('div');
+                let colorClass = 'bg-slate-100 text-slate-300';
+                
+                if(session) {
+                    colorClass = `${SEMAFOROS[session.color].bg} text-white shadow-sm has-data`;
+                }
+
+                dayEl.className = `calendar-day ${colorClass} cursor-pointer transition-transform active:scale-90`;
+                dayEl.innerText = dayNum;
+                
+                dayEl.onclick = () => {
+                    if(session) {
+                        detailBox.classList.remove('hidden');
+                        document.getElementById('detail-date').innerText = date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+                        document.getElementById('detail-info').innerHTML = `
+                            ${session.objetivo} <br>
+                            <span class="text-blue-500">${session.totalTime} min</span> | 
+                            <span class="text-red-500">RPE ${session.rpe}</span> | 
+                            <span class="text-slate-500">Carga: ${Math.round(session.rpe * session.totalTime)} UA</span>
+                        `;
+                    } else {
+                        detailBox.classList.add('hidden');
+                    }
+                };
+                
+                container.appendChild(dayEl);
             }
         }
 
