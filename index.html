@@ -53,15 +53,6 @@ const App = () => {
   });
   const [sessions, setSessions] = useState([]);
 
-  // Cálculo de carga automática basado en la matriz de la información
-  const calculateColor = (params) => {
-    const score = (params.intensidad * 2) + params.complejidad + params.densidad + params.transiciones + params.velocidad;
-    if (score > 24) return 'ROJO';
-    if (score > 18) return 'NARANJA';
-    if (score > 10) return 'AMARILLO';
-    return 'VERDE';
-  };
-
   const addTareaToSession = (tareaBase) => {
     const nuevaTarea = {
       ...tareaBase,
@@ -84,7 +75,9 @@ const App = () => {
 
   const saveSession = () => {
     if (session.tareas.length === 0) return;
-    setSessions([...sessions, { ...session, id: Date.now() }]);
+    const summary = sessionSummary;
+    const sessionToSave = { ...session, id: Date.now(), color: summary.color, totalTime: summary.totalTime, rpeAvg: summary.rpeAvg };
+    setSessions(prev => [sessionToSave, ...prev]);
     setSession({
       fecha: new Date().toISOString().split('T')[0],
       objetivoPrincipal: '',
@@ -102,8 +95,8 @@ const App = () => {
     
     session.tareas.forEach(t => {
       counts[t.color]++;
-      totalRpe += parseInt(t.rpe);
-      totalTime += parseInt(t.duracion);
+      totalRpe += parseInt(t.rpe || 0);
+      totalTime += parseInt(t.duracion || 0);
     });
 
     let finalColor = 'VERDE';
@@ -119,7 +112,7 @@ const App = () => {
   }, [session.tareas]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-24">
       {/* Header */}
       <header className="bg-slate-900 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg">
         <div>
@@ -137,11 +130,11 @@ const App = () => {
       <main className="max-w-4xl mx-auto p-4">
         
         {view === 'dashboard' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
+          <div className="space-y-6">
             {/* Resumen Semanal */}
             <section>
-              <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-                <Calendar size={20} /> Microciclo Actual
+              <h2 className="text-lg font-bold mb-3 flex items-center gap-2 text-slate-700">
+                <Calendar size={20} className="text-blue-500" /> Microciclo Actual
               </h2>
               <div className="grid grid-cols-5 gap-2">
                 {['MAR', 'MIE', 'JUE', 'VIE', 'SAB'].map((dia, idx) => {
@@ -149,9 +142,9 @@ const App = () => {
                   const labels = ['Carga Máx', 'Tact/Alta', 'Ajuste', 'Priming', 'PARTIDO'];
                   return (
                     <div key={dia} className="flex flex-col items-center">
-                      <div className={`w-full h-24 rounded-lg ${colors[idx]} flex flex-col items-center justify-center text-white shadow-sm border border-black/5`}>
+                      <div className={`w-full h-24 rounded-xl ${colors[idx]} flex flex-col items-center justify-center text-white shadow-md border border-white/10`}>
                         <span className="font-bold text-sm">{dia}</span>
-                        <span className="text-[10px] text-center px-1 opacity-90">{labels[idx]}</span>
+                        <span className="text-[10px] text-center px-1 font-medium leading-tight opacity-90">{labels[idx]}</span>
                       </div>
                     </div>
                   );
@@ -159,54 +152,59 @@ const App = () => {
               </div>
             </section>
 
-            {/* Ultimas Sesiones */}
+            {/* Sesiones Recientes */}
             <section>
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-bold">Sesiones Recientes</h2>
+                <h2 className="text-lg font-bold text-slate-700">Sesiones Registradas</h2>
                 <button 
                   onClick={() => setView('planner')}
-                  className="bg-slate-900 text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 shadow-md active:scale-95 transition-transform"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-md transition-all active:scale-95"
                 >
                   <Plus size={16} /> Nueva Sesión
                 </button>
               </div>
               
               {sessions.length === 0 ? (
-                <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400">
-                  <ClipboardList size={40} className="mx-auto mb-2 opacity-20" />
-                  <p>No hay sesiones registradas esta semana.</p>
+                <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center text-slate-400">
+                  <ClipboardList size={48} className="mx-auto mb-3 opacity-20" />
+                  <p className="font-medium">No hay sesiones esta semana.</p>
+                  <p className="text-xs">Iniciá una nueva sesión para cuantificar la carga.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {sessions.map(s => (
-                    <div key={s.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between">
+                    <div key={s.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between group hover:border-blue-200 transition-colors">
                       <div className="flex items-center gap-4">
-                        <div className={`w-3 h-12 rounded-full ${SEMAFORO[s.color || 'VERDE'].color}`} />
+                        <div className={`w-3 h-12 rounded-full ${SEMAFORO[s.color || 'VERDE'].color} shadow-sm`} />
                         <div>
-                          <p className="font-bold">{new Date(s.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric' })}</p>
-                          <p className="text-sm text-slate-500">{s.tareas.length} tareas • {s.totalTime} min</p>
+                          <p className="font-bold text-slate-800 capitalize">
+                            {new Date(s.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                          </p>
+                          <p className="text-xs text-slate-500 font-medium">
+                            {s.tareas.length} tareas • {s.totalTime} min • RPE {s.rpeAvg}
+                          </p>
                         </div>
                       </div>
-                      <ChevronRight className="text-slate-300" />
+                      <ChevronRight className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                     </div>
                   ))}
                 </div>
               )}
             </section>
 
-            {/* Indicadores Clave */}
-            <section className="bg-indigo-900 text-white p-6 rounded-2xl shadow-xl">
+            {/* Recordatorio */}
+            <section className="bg-indigo-900 text-white p-6 rounded-2xl shadow-xl border border-indigo-800">
               <h3 className="font-bold mb-4 flex items-center gap-2">
-                <Zap className="text-yellow-400" /> Recordatorio Metodológico
+                <Zap className="text-yellow-400" size={20} /> Criterio Metodológico
               </h3>
-              <div className="grid grid-cols-1 gap-4 text-sm">
-                <div className="bg-white/10 p-3 rounded-lg border border-white/10">
-                  <p className="font-semibold text-yellow-300">Fatiga Cognitiva</p>
-                  <p className="text-xs opacity-80">El futsal fatiga desde lo neuromuscular. Si hay transición y presión, es Naranja o Rojo.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="bg-white/10 p-4 rounded-xl border border-white/5">
+                  <p className="font-bold text-yellow-300 mb-1">Fatiga Neuromuscular</p>
+                  <p className="text-xs text-indigo-100">Si el ejercicio obliga a decidir rápido, tiene transición y presión, la fatiga es real aunque no haya carrera continua.</p>
                 </div>
-                <div className="bg-white/10 p-3 rounded-lg border border-white/10">
-                  <p className="font-semibold text-red-300">Regla 4v4</p>
-                  <p className="text-xs opacity-80">Un 4v4 pequeño puede fatigar más que 20' de carrera continua por las aceleraciones y frenadas.</p>
+                <div className="bg-white/10 p-4 rounded-xl border border-white/5">
+                  <p className="font-bold text-red-300 mb-1">Efecto del Espacio</p>
+                  <p className="text-xs text-indigo-100">Espacios pequeños aumentan aceleraciones/frenadas. Espacios grandes aumentan metros totales y fatiga metabólica.</p>
                 </div>
               </div>
             </section>
@@ -214,179 +212,196 @@ const App = () => {
         )}
 
         {view === 'planner' && (
-          <div className="space-y-6 animate-in slide-in-from-right duration-300">
-            <header className="flex justify-between items-center">
-              <button onClick={() => setView('dashboard')} className="text-sm text-slate-500">← Cancelar</button>
-              <h2 className="font-bold">Nueva Sesión</h2>
+          <div className="space-y-6 pb-20">
+            <header className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+              <button onClick={() => setView('dashboard')} className="text-sm font-bold text-slate-500 hover:text-slate-700">← Salir</button>
+              <h2 className="font-bold text-slate-800">Planificador de Sesión</h2>
               <button 
                 onClick={saveSession}
-                className="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm font-bold"
+                disabled={session.tareas.length === 0}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-all ${session.tareas.length === 0 ? 'bg-slate-200 text-slate-400' : 'bg-green-600 text-white hover:bg-green-700'}`}
               >
-                Guardar
+                Finalizar
               </button>
             </header>
 
-            {/* Configuración Básica */}
-            <div className="bg-white p-4 rounded-xl shadow-sm space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Fecha</label>
-                <input 
-                  type="date" 
-                  value={session.fecha}
-                  onChange={(e) => setSession({...session, fecha: e.target.value})}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Objetivo Táctico</label>
-                <input 
-                  type="text" 
-                  placeholder="Ej: Salida de presión / Defensa de cambios"
-                  value={session.objetivoPrincipal}
-                  onChange={(e) => setSession({...session, objetivoPrincipal: e.target.value})}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                />
+            {/* Inputs de Sesión */}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fecha de Entrenamiento</label>
+                  <input 
+                    type="date" 
+                    value={session.fecha}
+                    onChange={(e) => setSession({...session, fecha: e.target.value})}
+                    className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Objetivo Táctico</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ej: Transición Ofensiva"
+                    value={session.objetivoPrincipal}
+                    onChange={(e) => setSession({...session, objetivoPrincipal: e.target.value})}
+                    className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Resumen de Carga Estimada */}
-            <div className={`p-4 rounded-xl border-2 ${SEMAFORO[sessionSummary.color].border} ${SEMAFORO[sessionSummary.color].color} bg-opacity-10 flex justify-between items-center`}>
-              <div>
-                <p className="text-xs font-bold uppercase opacity-60">Carga Estimada</p>
-                <p className={`text-lg font-black ${SEMAFORO[sessionSummary.color].text}`}>
-                  {sessionSummary.color} — {SEMAFORO[sessionSummary.color].label}
-                </p>
+            {/* Indicador de Carga */}
+            <div className={`p-5 rounded-2xl border-2 ${SEMAFORO[sessionSummary.color].border} ${SEMAFORO[sessionSummary.color].color} bg-opacity-10 shadow-sm flex justify-between items-center transition-all duration-500`}>
+              <div className="flex items-center gap-4">
+                <div className={`w-4 h-12 rounded-full ${SEMAFORO[sessionSummary.color].color} shadow-sm animate-pulse`} />
+                <div>
+                  <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Carga Proyectada</p>
+                  <p className={`text-xl font-black ${SEMAFORO[sessionSummary.color].text}`}>
+                    {sessionSummary.color} — {SEMAFORO[sessionSummary.color].label}
+                  </p>
+                </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold">{sessionSummary.totalTime} min</p>
-                <p className="text-xs opacity-60">RPE: {sessionSummary.rpeAvg}</p>
+                <div className="flex items-center gap-2 justify-end text-slate-700 font-bold">
+                   <Activity size={16} /> <span>{sessionSummary.totalTime} min</span>
+                </div>
+                <p className="text-xs font-bold text-slate-500">RPE Estimado: {sessionSummary.rpeAvg}</p>
               </div>
             </div>
 
-            {/* Lista de Tareas */}
+            {/* Listado de Tareas en Sesion */}
             <div className="space-y-3">
-              <h3 className="font-bold flex items-center gap-2 px-1">
-                <ClipboardList size={18} /> Estructura de Sesión
+              <h3 className="font-bold text-slate-700 px-1 flex items-center gap-2">
+                <ClipboardList size={18} className="text-blue-500" /> Estructura de Trabajo
               </h3>
               {session.tareas.length === 0 ? (
-                <div className="text-center py-10 bg-slate-100 rounded-xl text-slate-400 text-sm">
-                  Aún no has sumado tareas. Buscalas abajo.
+                <div className="text-center py-12 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 italic text-sm">
+                  Seleccioná tareas de la biblioteca para comenzar
                 </div>
               ) : (
-                session.tareas.map((t, idx) => (
-                  <div key={t.instanceId} className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center group">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs">
-                        {idx + 1}
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm">{t.nombre}</p>
-                        <div className="flex gap-2 items-center">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${SEMAFORO[t.color].color} text-white`}>
-                            {t.color}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            {t.duracion} min • RPE {t.rpe}
-                          </span>
+                <div className="space-y-2">
+                  {session.tareas.map((t, idx) => (
+                    <div key={t.instanceId} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center animate-in slide-in-from-left duration-200">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-slate-900 text-white w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs">
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">{t.nombre}</p>
+                          <div className="flex gap-2 mt-0.5">
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${SEMAFORO[t.color].color} text-white`}>
+                              {t.color}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-bold">
+                              {t.duracion} min • RPE {t.rpe}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <button 
+                        onClick={() => removeTarea(t.instanceId)} 
+                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </div>
-                    <button onClick={() => removeTarea(t.instanceId)} className="text-slate-300 hover:text-red-500">
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
 
-            {/* Selector de Tareas */}
-            <div className="space-y-4 pb-10">
-              <h3 className="font-bold px-1 mt-6">Biblioteca de Tareas</h3>
+            {/* Biblioteca de Tareas */}
+            <div className="mt-8 space-y-6">
+              <h3 className="font-bold text-slate-700 px-1 border-l-4 border-blue-500 pl-3">Biblioteca de Tareas Metodológicas</h3>
               {CATEGORIAS_TAREAS.map(cat => (
-                <div key={cat.id} className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase ml-1">{cat.icono} {cat.nombre}</h4>
-                  <div className="grid grid-cols-1 gap-2">
+                <div key={cat.id} className="space-y-3">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    {cat.icono} {cat.nombre}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {TAREAS_PREDEFINIDAS.filter(t => t.cat === cat.id).map(t => (
                       <button
                         key={t.id}
                         onClick={() => addTareaToSession(t)}
-                        className="bg-white p-3 rounded-xl border border-slate-200 text-left hover:border-blue-300 active:bg-blue-50 transition-colors flex justify-between items-center shadow-sm"
+                        className="bg-white p-4 rounded-2xl border border-slate-200 text-left hover:border-blue-400 hover:shadow-md transition-all flex justify-between items-center group active:scale-[0.98]"
                       >
                         <div>
-                          <p className="text-sm font-semibold">{t.nombre}</p>
-                          <p className="text-[10px] text-slate-400">Predeterminado: {t.color}</p>
+                          <p className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{t.nombre}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className={`w-2 h-2 rounded-full ${SEMAFORO[t.color].color}`} />
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Carga: {t.color}</p>
+                          </div>
                         </div>
-                        <Plus size={18} className="text-blue-500" />
+                        <Plus size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
                       </button>
                     ))}
                   </div>
                 </div>
               ))}
-              
-              {/* Tooltip de Metodologia */}
-              <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl mt-8">
-                <div className="flex gap-3">
-                  <Info className="text-yellow-600 flex-shrink-0" />
-                  <div className="text-xs text-yellow-800 leading-relaxed">
-                    <strong>Consejo Nahue:</strong> Las transiciones son las tareas más fatigosas. Combinan sprint, frenada, cambio de dirección y decisión a alta velocidad.
-                  </div>
-                </div>
-              </div>
             </div>
+          </div>
+        )}
+
+        {view === 'history' && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-bold text-slate-700">Historial de Cargas</h2>
+            {sessions.length === 0 ? (
+              <p className="text-center text-slate-400 py-20">No hay datos históricos disponibles.</p>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase">Fecha</th>
+                      <th className="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase">Carga</th>
+                      <th className="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase text-right">Tiempo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {sessions.map(s => (
+                      <tr key={s.id} className="hover:bg-slate-50/50">
+                        <td className="px-4 py-3 font-bold text-slate-700">{s.fecha}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black text-white ${SEMAFORO[s.color].color}`}>
+                            {s.color}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-500">{s.totalTime} min</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </main>
 
       {/* Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex items-center justify-around px-4 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 h-20 flex items-center justify-around px-4 z-50">
         <button 
           onClick={() => setView('dashboard')}
-          className={`flex flex-col items-center gap-1 ${view === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${view === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}
         >
-          <BarChart3 size={20} />
-          <span className="text-[10px] font-bold uppercase">Dashboard</span>
+          <BarChart3 size={22} strokeWidth={view === 'dashboard' ? 2.5 : 2} />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Panel</span>
         </button>
         <div className="relative -top-6">
           <button 
             onClick={() => setView('planner')}
-            className="bg-slate-900 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-slate-50 active:scale-90 transition-transform"
+            className="bg-slate-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white active:scale-90 transition-all hover:bg-blue-600"
           >
-            <Plus size={28} />
+            <Plus size={28} strokeWidth={3} />
           </button>
         </div>
         <button 
           onClick={() => setView('history')}
-          className={`flex flex-col items-center gap-1 ${view === 'history' ? 'text-blue-600' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${view === 'history' ? 'text-blue-600' : 'text-slate-400'}`}
         >
-          <ClipboardList size={20} />
-          <span className="text-[10px] font-bold uppercase">Historial</span>
+          <ClipboardList size={22} strokeWidth={view === 'history' ? 2.5 : 2} />
+          <span className="text-[10px] font-black uppercase tracking-tighter">Historial</span>
         </button>
       </nav>
-
-      {/* Info Overlay (Solo visible en vistas especificas si fuera necesario) */}
-      <div className="fixed top-20 right-4 hidden lg:block w-64 space-y-4">
-        <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-100">
-          <h4 className="font-bold text-sm mb-2">Escala RPE</h4>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[10px]">
-              <div className="w-2 h-2 rounded-full bg-red-600"></div>
-              <span>8-10: "Termino destruido"</span>
-            </div>
-            <div className="flex items-center gap-2 text-[10px]">
-              <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-              <span>6-8: "Intenso pero recuperable"</span>
-            </div>
-            <div className="flex items-center gap-2 text-[10px]">
-              <div className="w-2 h-2 rounded-full bg-yellow-400"></div>
-              <span>4-6: "Entrené bien pero fresco"</span>
-            </div>
-            <div className="flex items-center gap-2 text-[10px]">
-              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-              <span>2-4: "Mejor de lo que empecé"</span>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
