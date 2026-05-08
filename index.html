@@ -1,409 +1,414 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  BarChart3, 
-  Calendar, 
-  ClipboardList, 
-  Plus, 
-  Trash2, 
-  AlertTriangle, 
-  Settings, 
-  Info,
-  ChevronRight,
-  Zap,
-  Activity,
-  Users
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futsal Load Pro - Gestión de Cargas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .custom-shadow { box-shadow: 0 4px 20px -2px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-24">
 
-const CATEGORIAS_TAREAS = [
-  { id: 'rondos', nombre: 'Rondos', icono: '🔄' },
-  { id: 'posesion', nombre: 'Posesión', icono: '⚽' },
-  { id: 'transiciones', nombre: 'Transiciones', icono: '⚡' },
-  { id: 'reducido', nombre: 'Juego Reducido', icono: '🏟️' },
-  { id: 'analitico', nombre: 'Analíticas', icono: '🧘' },
-  { id: 'balon_parado', nombre: 'Balón Parado', icono: '🎯' },
-  { id: 'presion', nombre: 'Presión/Defensa', icono: '🛡️' }
-];
-
-const SEMAFORO = {
-  VERDE: { color: 'bg-green-500', text: 'text-green-600', border: 'border-green-200', label: 'Baja / Priming', rpe: '2-4' },
-  AMARILLO: { color: 'bg-yellow-400', text: 'text-yellow-600', border: 'border-yellow-200', label: 'Media / Baja', rpe: '4-6' },
-  NARANJA: { color: 'bg-orange-500', text: 'text-orange-600', border: 'border-orange-200', label: 'Media / Alta', rpe: '6-8' },
-  ROJO: { color: 'bg-red-600', text: 'text-red-600', border: 'border-red-200', label: 'Alta Carga', rpe: '8-10' }
-};
-
-const TAREAS_PREDEFINIDAS = [
-  { id: 1, cat: 'rondos', nombre: 'Rondo técnico simple', color: 'VERDE', cargaFisica: 'Baja', cargaTactiva: 'Baja' },
-  { id: 2, cat: 'rondos', nombre: 'Rondo presión temporal', color: 'AMARILLO', cargaFisica: 'Media Baja', cargaTactiva: 'Media' },
-  { id: 3, cat: 'rondos', nombre: 'Rondo transición inmediata', color: 'NARANJA', cargaFisica: 'Media Alta', cargaTactiva: 'Alta' },
-  { id: 4, cat: 'rondos', nombre: 'Rondo competitivo castigo', color: 'ROJO', cargaFisica: 'Alta', cargaTactiva: 'Alta' },
-  { id: 5, cat: 'transiciones', nombre: '2v1 técnico', color: 'AMARILLO' },
-  { id: 6, cat: 'transiciones', nombre: '3v2 ida y vuelta', color: 'NARANJA' },
-  { id: 7, cat: 'transiciones', nombre: 'Oleadas continuas', color: 'ROJO' },
-  { id: 8, cat: 'reducido', nombre: '4v4 intenso', color: 'ROJO' },
-  { id: 9, cat: 'reducido', nombre: '3v3 corto', color: 'NARANJA' },
-  { id: 10, cat: 'presion', nombre: 'Presión continua hombre a hombre', color: 'ROJO' }
-];
-
-const App = () => {
-  const [view, setView] = useState('dashboard'); // dashboard, planner, history
-  const [session, setSession] = useState({
-    fecha: new Date().toISOString().split('T')[0],
-    objetivoPrincipal: '',
-    tareas: []
-  });
-  const [sessions, setSessions] = useState([]);
-
-  const addTareaToSession = (tareaBase) => {
-    const nuevaTarea = {
-      ...tareaBase,
-      instanceId: Math.random().toString(36).substr(2, 9),
-      duracion: 15,
-      rpe: SEMAFORO[tareaBase.color].rpe.split('-')[1]
-    };
-    setSession(prev => ({
-      ...prev,
-      tareas: [...prev.tareas, nuevaTarea]
-    }));
-  };
-
-  const removeTarea = (id) => {
-    setSession(prev => ({
-      ...prev,
-      tareas: prev.tareas.filter(t => t.instanceId !== id)
-    }));
-  };
-
-  const saveSession = () => {
-    if (session.tareas.length === 0) return;
-    const summary = sessionSummary;
-    const sessionToSave = { ...session, id: Date.now(), color: summary.color, totalTime: summary.totalTime, rpeAvg: summary.rpeAvg };
-    setSessions(prev => [sessionToSave, ...prev]);
-    setSession({
-      fecha: new Date().toISOString().split('T')[0],
-      objetivoPrincipal: '',
-      tareas: []
-    });
-    setView('dashboard');
-  };
-
-  // Resumen de carga de la sesión actual
-  const sessionSummary = useMemo(() => {
-    if (session.tareas.length === 0) return { color: 'VERDE', rpeAvg: 0, totalTime: 0 };
-    const counts = { ROJO: 0, NARANJA: 0, AMARILLO: 0, VERDE: 0 };
-    let totalRpe = 0;
-    let totalTime = 0;
-    
-    session.tareas.forEach(t => {
-      counts[t.color]++;
-      totalRpe += parseInt(t.rpe || 0);
-      totalTime += parseInt(t.duracion || 0);
-    });
-
-    let finalColor = 'VERDE';
-    if (counts.ROJO > 0 || counts.NARANJA > 1) finalColor = 'ROJO';
-    else if (counts.NARANJA > 0 || counts.AMARILLO > 2) finalColor = 'NARANJA';
-    else if (counts.AMARILLO > 0) finalColor = 'AMARILLO';
-
-    return {
-      color: finalColor,
-      rpeAvg: (totalRpe / session.tareas.length).toFixed(1),
-      totalTime
-    };
-  }, [session.tareas]);
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-24">
-      {/* Header */}
-      <header className="bg-slate-900 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg">
+    <!-- Header -->
+    <header class="bg-slate-900 text-white p-4 sticky top-0 z-50 flex justify-between items-center shadow-lg">
         <div>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Activity className="text-red-500" /> Futsal Load Pro
-          </h1>
-          <p className="text-xs text-slate-400">Sistema de Periodización Táctica</p>
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i class="fas fa-heartbeat text-red-500"></i> Futsal Load Pro
+            </h1>
+            <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Periodización Táctica</p>
         </div>
-        <div className="bg-slate-800 rounded-full p-2">
-          <Settings size={20} className="text-slate-300" />
+        <div class="bg-slate-800 rounded-full w-10 h-10 flex items-center justify-center">
+            <i class="fas fa-cog text-slate-300"></i>
         </div>
-      </header>
+    </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto p-4">
+    <main class="max-w-4xl mx-auto p-4">
         
-        {view === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Resumen Semanal */}
+        <!-- VISTA DASHBOARD -->
+        <div id="view-dashboard" class="tab-content active space-y-6">
             <section>
-              <h2 className="text-lg font-bold mb-3 flex items-center gap-2 text-slate-700">
-                <Calendar size={20} className="text-blue-500" /> Microciclo Actual
-              </h2>
-              <div className="grid grid-cols-5 gap-2">
-                {['MAR', 'MIE', 'JUE', 'VIE', 'SAB'].map((dia, idx) => {
-                  const colors = ['bg-red-600', 'bg-orange-500', 'bg-yellow-400', 'bg-green-500', 'bg-blue-500'];
-                  const labels = ['Carga Máx', 'Tact/Alta', 'Ajuste', 'Priming', 'PARTIDO'];
-                  return (
-                    <div key={dia} className="flex flex-col items-center">
-                      <div className={`w-full h-24 rounded-xl ${colors[idx]} flex flex-col items-center justify-center text-white shadow-md border border-white/10`}>
-                        <span className="font-bold text-sm">{dia}</span>
-                        <span className="text-[10px] text-center px-1 font-medium leading-tight opacity-90">{labels[idx]}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                <h2 class="text-lg font-bold mb-3 flex items-center gap-2 text-slate-700">
+                    <i class="far fa-calendar-alt text-blue-500"></i> Microciclo Actual
+                </h2>
+                <div class="grid grid-cols-5 gap-2" id="weekly-plan">
+                    <!-- Generado por JS -->
+                </div>
             </section>
 
-            {/* Sesiones Recientes */}
             <section>
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-bold text-slate-700">Sesiones Registradas</h2>
-                <button 
-                  onClick={() => setView('planner')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-md transition-all active:scale-95"
-                >
-                  <Plus size={16} /> Nueva Sesión
-                </button>
-              </div>
-              
-              {sessions.length === 0 ? (
-                <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center text-slate-400">
-                  <ClipboardList size={48} className="mx-auto mb-3 opacity-20" />
-                  <p className="font-medium">No hay sesiones esta semana.</p>
-                  <p className="text-xs">Iniciá una nueva sesión para cuantificar la carga.</p>
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-slate-700">Sesiones Guardadas</h2>
+                    <button onclick="switchTab('planner')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm font-bold shadow-md transition-all">
+                        <i class="fas fa-plus"></i> Nueva Sesión
+                    </button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {sessions.map(s => (
-                    <div key={s.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between group hover:border-blue-200 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-3 h-12 rounded-full ${SEMAFORO[s.color || 'VERDE'].color} shadow-sm`} />
-                        <div>
-                          <p className="font-bold text-slate-800 capitalize">
-                            {new Date(s.fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })}
-                          </p>
-                          <p className="text-xs text-slate-500 font-medium">
-                            {s.tareas.length} tareas • {s.totalTime} min • RPE {s.rpeAvg}
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                <div id="sessions-list" class="space-y-3">
+                    <!-- Generado por JS -->
+                </div>
+            </section>
+
+            <section class="bg-indigo-900 text-white p-6 rounded-2xl shadow-xl border border-indigo-800">
+                <h3 class="font-bold mb-4 flex items-center gap-2">
+                    <i class="fas fa-bolt text-yellow-400"></i> Clave Metodológica
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div class="bg-white/10 p-4 rounded-xl border border-white/5">
+                        <p class="font-bold text-yellow-300 mb-1">Fatiga Neuromuscular</p>
+                        <p class="text-xs text-indigo-100">En Futsal, la toma de decisión constante fatiga más que correr. Transición = Alta Carga.</p>
                     </div>
-                  ))}
+                    <div class="bg-white/10 p-4 rounded-xl border border-white/5">
+                        <p class="font-bold text-red-300 mb-1">Regla de Oro</p>
+                        <p class="text-xs text-indigo-100">Si hay presión y espacios reducidos, el componente de aceleración/frenada es máximo.</p>
+                    </div>
                 </div>
-              )}
             </section>
+        </div>
 
-            {/* Recordatorio */}
-            <section className="bg-indigo-900 text-white p-6 rounded-2xl shadow-xl border border-indigo-800">
-              <h3 className="font-bold mb-4 flex items-center gap-2">
-                <Zap className="text-yellow-400" size={20} /> Criterio Metodológico
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="bg-white/10 p-4 rounded-xl border border-white/5">
-                  <p className="font-bold text-yellow-300 mb-1">Fatiga Neuromuscular</p>
-                  <p className="text-xs text-indigo-100">Si el ejercicio obliga a decidir rápido, tiene transición y presión, la fatiga es real aunque no haya carrera continua.</p>
-                </div>
-                <div className="bg-white/10 p-4 rounded-xl border border-white/5">
-                  <p className="font-bold text-red-300 mb-1">Efecto del Espacio</p>
-                  <p className="text-xs text-indigo-100">Espacios pequeños aumentan aceleraciones/frenadas. Espacios grandes aumentan metros totales y fatiga metabólica.</p>
-                </div>
-              </div>
-            </section>
-          </div>
-        )}
-
-        {view === 'planner' && (
-          <div className="space-y-6 pb-20">
-            <header className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-              <button onClick={() => setView('dashboard')} className="text-sm font-bold text-slate-500 hover:text-slate-700">← Salir</button>
-              <h2 className="font-bold text-slate-800">Planificador de Sesión</h2>
-              <button 
-                onClick={saveSession}
-                disabled={session.tareas.length === 0}
-                className={`px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-all ${session.tareas.length === 0 ? 'bg-slate-200 text-slate-400' : 'bg-green-600 text-white hover:bg-green-700'}`}
-              >
-                Finalizar
-              </button>
+        <!-- VISTA PLANIFICADOR -->
+        <div id="view-planner" class="tab-content space-y-6">
+            <header class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <button onclick="switchTab('dashboard')" class="text-sm font-bold text-slate-500">← Volver</button>
+                <h2 class="font-bold text-slate-800">Planificador</h2>
+                <button onclick="saveSession()" class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-green-700">Guardar</button>
             </header>
 
-            {/* Inputs de Sesión */}
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fecha de Entrenamiento</label>
-                  <input 
-                    type="date" 
-                    value={session.fecha}
-                    onChange={(e) => setSession({...session, fecha: e.target.value})}
-                    className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Objetivo Táctico</label>
-                  <input 
-                    type="text" 
-                    placeholder="Ej: Transición Ofensiva"
-                    value={session.objetivoPrincipal}
-                    onChange={(e) => setSession({...session, objetivoPrincipal: e.target.value})}
-                    className="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Indicador de Carga */}
-            <div className={`p-5 rounded-2xl border-2 ${SEMAFORO[sessionSummary.color].border} ${SEMAFORO[sessionSummary.color].color} bg-opacity-10 shadow-sm flex justify-between items-center transition-all duration-500`}>
-              <div className="flex items-center gap-4">
-                <div className={`w-4 h-12 rounded-full ${SEMAFORO[sessionSummary.color].color} shadow-sm animate-pulse`} />
-                <div>
-                  <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Carga Proyectada</p>
-                  <p className={`text-xl font-black ${SEMAFORO[sessionSummary.color].text}`}>
-                    {sessionSummary.color} — {SEMAFORO[sessionSummary.color].label}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="flex items-center gap-2 justify-end text-slate-700 font-bold">
-                   <Activity size={16} /> <span>{sessionSummary.totalTime} min</span>
-                </div>
-                <p className="text-xs font-bold text-slate-500">RPE Estimado: {sessionSummary.rpeAvg}</p>
-              </div>
-            </div>
-
-            {/* Listado de Tareas en Sesion */}
-            <div className="space-y-3">
-              <h3 className="font-bold text-slate-700 px-1 flex items-center gap-2">
-                <ClipboardList size={18} className="text-blue-500" /> Estructura de Trabajo
-              </h3>
-              {session.tareas.length === 0 ? (
-                <div className="text-center py-12 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 italic text-sm">
-                  Seleccioná tareas de la biblioteca para comenzar
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {session.tareas.map((t, idx) => (
-                    <div key={t.instanceId} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center animate-in slide-in-from-left duration-200">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-slate-900 text-white w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs">
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800 text-sm">{t.nombre}</p>
-                          <div className="flex gap-2 mt-0.5">
-                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${SEMAFORO[t.color].color} text-white`}>
-                              {t.color}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-bold">
-                              {t.duracion} min • RPE {t.rpe}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => removeTarea(t.instanceId)} 
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Fecha</label>
+                        <input type="date" id="input-date" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
                     </div>
-                  ))}
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Objetivo Táctico</label>
+                        <input type="text" id="input-objective" placeholder="Ej: Salida de presión" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                    </div>
                 </div>
-              )}
             </div>
 
-            {/* Biblioteca de Tareas */}
-            <div className="mt-8 space-y-6">
-              <h3 className="font-bold text-slate-700 px-1 border-l-4 border-blue-500 pl-3">Biblioteca de Tareas Metodológicas</h3>
-              {CATEGORIAS_TAREAS.map(cat => (
-                <div key={cat.id} className="space-y-3">
-                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                    {cat.icono} {cat.nombre}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {TAREAS_PREDEFINIDAS.filter(t => t.cat === cat.id).map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => addTareaToSession(t)}
-                        className="bg-white p-4 rounded-2xl border border-slate-200 text-left hover:border-blue-400 hover:shadow-md transition-all flex justify-between items-center group active:scale-[0.98]"
-                      >
-                        <div>
-                          <p className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{t.nombre}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className={`w-2 h-2 rounded-full ${SEMAFORO[t.color].color}`} />
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Carga: {t.color}</p>
-                          </div>
-                        </div>
-                        <Plus size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
-                      </button>
-                    ))}
-                  </div>
+            <!-- Indicador de Carga Dinámico -->
+            <div id="load-indicator" class="p-5 rounded-2xl border-2 border-green-200 bg-green-50 shadow-sm flex justify-between items-center transition-all">
+                <div class="flex items-center gap-4">
+                    <div id="indicator-bar" class="w-4 h-12 rounded-full bg-green-500 shadow-sm"></div>
+                    <div>
+                        <p class="text-[10px] font-black uppercase opacity-60 tracking-widest text-slate-600">Carga Proyectada</p>
+                        <p id="indicator-label" class="text-xl font-black text-green-600 uppercase">VERDE — Priming</p>
+                    </div>
                 </div>
-              ))}
+                <div class="text-right">
+                    <div class="flex items-center gap-2 justify-end text-slate-700 font-bold">
+                       <i class="fas fa-clock text-blue-500"></i> <span id="summary-time">0 min</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-500">RPE Promedio: <span id="summary-rpe">0</span></p>
+                </div>
             </div>
-          </div>
-        )}
 
-        {view === 'history' && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-bold text-slate-700">Historial de Cargas</h2>
-            {sessions.length === 0 ? (
-              <p className="text-center text-slate-400 py-20">No hay datos históricos disponibles.</p>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>
-                      <th className="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase">Fecha</th>
-                      <th className="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase">Carga</th>
-                      <th className="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase text-right">Tiempo</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {sessions.map(s => (
-                      <tr key={s.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-bold text-slate-700">{s.fecha}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black text-white ${SEMAFORO[s.color].color}`}>
-                            {s.color}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-500">{s.totalTime} min</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
+            <div class="space-y-3">
+                <h3 class="font-bold text-slate-700 px-1 flex items-center gap-2">
+                    <i class="fas fa-list-ul text-blue-500"></i> Tareas de la Sesión
+                </h3>
+                <div id="current-tasks" class="space-y-2">
+                    <!-- Tareas agregadas por el usuario -->
+                </div>
+            </div>
 
-      {/* Navigation Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 h-20 flex items-center justify-around px-4 z-50">
-        <button 
-          onClick={() => setView('dashboard')}
-          className={`flex flex-col items-center gap-1 transition-colors ${view === 'dashboard' ? 'text-blue-600' : 'text-slate-400'}`}
-        >
-          <BarChart3 size={22} strokeWidth={view === 'dashboard' ? 2.5 : 2} />
-          <span className="text-[10px] font-black uppercase tracking-tighter">Panel</span>
-        </button>
-        <div className="relative -top-6">
-          <button 
-            onClick={() => setView('planner')}
-            className="bg-slate-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white active:scale-90 transition-all hover:bg-blue-600"
-          >
-            <Plus size={28} strokeWidth={3} />
-          </button>
+            <div class="mt-8 space-y-6">
+                <h3 class="font-bold text-slate-700 px-1 border-l-4 border-blue-500 pl-3">Biblioteca Metodológica</h3>
+                <div id="library-container" class="space-y-6">
+                    <!-- Categorías y botones generados por JS -->
+                </div>
+            </div>
         </div>
-        <button 
-          onClick={() => setView('history')}
-          className={`flex flex-col items-center gap-1 transition-colors ${view === 'history' ? 'text-blue-600' : 'text-slate-400'}`}
-        >
-          <ClipboardList size={22} strokeWidth={view === 'history' ? 2.5 : 2} />
-          <span className="text-[10px] font-black uppercase tracking-tighter">Historial</span>
-        </button>
-      </nav>
-    </div>
-  );
-};
 
-export default App;
+        <!-- VISTA HISTORIAL -->
+        <div id="view-history" class="tab-content space-y-6">
+            <h2 class="text-lg font-bold text-slate-700">Historial Completo</h2>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 border-b border-slate-100">
+                        <tr>
+                            <th class="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase">Fecha</th>
+                            <th class="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase">Carga</th>
+                            <th class="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase text-right">Tiempo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body" class="divide-y divide-slate-50">
+                        <!-- Historial generado por JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 h-20 flex items-center justify-around px-4 z-50">
+        <button onclick="switchTab('dashboard')" class="flex flex-col items-center gap-1 text-blue-600 nav-btn" data-tab="dashboard">
+            <i class="fas fa-chart-pie text-xl"></i>
+            <span class="text-[10px] font-black uppercase">Panel</span>
+        </button>
+        <div class="relative -top-6">
+            <button onclick="switchTab('planner')" class="bg-slate-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white active:scale-90 transition-all">
+                <i class="fas fa-plus text-xl"></i>
+            </button>
+        </div>
+        <button onclick="switchTab('history')" class="flex flex-col items-center gap-1 text-slate-400 nav-btn" data-tab="history">
+            <i class="fas fa-history text-xl"></i>
+            <span class="text-[10px] font-black uppercase">Historial</span>
+        </button>
+    </nav>
+
+    <script>
+        // --- CONSTANTES Y DATOS ---
+        const CATEGORIAS = [
+            { id: 'rondos', nombre: 'Rondos', icono: '🔄' },
+            { id: 'transiciones', nombre: 'Transiciones', icono: '⚡' },
+            { id: 'reducido', nombre: 'Juego Reducido', icono: '🏟️' },
+            { id: 'presion', nombre: 'Presión/Defensa', icono: '🛡️' }
+        ];
+
+        const TAREAS_DB = [
+            { id: 1, cat: 'rondos', nombre: 'Rondo técnico simple', color: 'VERDE', rpe: 3 },
+            { id: 2, cat: 'rondos', nombre: 'Rondo presión temporal', color: 'AMARILLO', rpe: 5 },
+            { id: 3, cat: 'rondos', nombre: 'Rondo transición inmediata', color: 'NARANJA', rpe: 7 },
+            { id: 4, cat: 'rondos', nombre: 'Rondo competitivo castigo', color: 'ROJO', rpe: 9 },
+            { id: 5, cat: 'transiciones', nombre: '2v1 técnico', color: 'AMARILLO', rpe: 5 },
+            { id: 6, cat: 'transiciones', nombre: '3v2 ida y vuelta', color: 'NARANJA', rpe: 7 },
+            { id: 7, cat: 'transiciones', nombre: 'Oleadas continuas', color: 'ROJO', rpe: 10 },
+            { id: 8, cat: 'reducido', nombre: '4v4 intenso', color: 'ROJO', rpe: 9 },
+            { id: 9, cat: 'reducido', nombre: '3v3 corto', color: 'NARANJA', rpe: 7 },
+            { id: 10, cat: 'presion', nombre: 'Presión continua hombre a hombre', color: 'ROJO', rpe: 9 }
+        ];
+
+        const SEMAFORO_STYLE = {
+            VERDE: { bg: 'bg-green-500', text: 'text-green-600', border: 'border-green-200', label: 'Baja / Priming' },
+            AMARILLO: { bg: 'bg-yellow-400', text: 'text-yellow-600', border: 'border-yellow-200', label: 'Media / Baja' },
+            NARANJA: { bg: 'bg-orange-500', text: 'text-orange-600', border: 'border-orange-200', label: 'Media / Alta' },
+            ROJO: { bg: 'bg-red-600', text: 'text-red-600', border: 'border-red-200', label: 'Alta Carga' }
+        };
+
+        // --- ESTADO DE LA APP ---
+        let currentSessionTasks = [];
+        let savedSessions = JSON.parse(localStorage.getItem('futsal_sessions')) || [];
+
+        // --- FUNCIONES CORE ---
+
+        function init() {
+            renderWeeklyPlan();
+            renderSessionsList();
+            renderLibrary();
+            document.getElementById('input-date').valueAsDate = new Date();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`view-${tabId}`).classList.add('active');
+            
+            // Estilos nav
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if(btn.dataset.tab === tabId) btn.classList.add('text-blue-600');
+                else btn.classList.remove('text-blue-600', 'text-slate-400');
+                if(!btn.classList.contains('text-blue-600')) btn.classList.add('text-slate-400');
+            });
+
+            if(tabId === 'history') renderHistoryTable();
+            if(tabId === 'dashboard') renderSessionsList();
+        }
+
+        function renderWeeklyPlan() {
+            const container = document.getElementById('weekly-plan');
+            const plan = [
+                { dia: 'MAR', col: 'bg-red-600', label: 'Máxima' },
+                { dia: 'MIE', col: 'bg-orange-500', label: 'Táctica' },
+                { dia: 'JUE', col: 'bg-yellow-400', label: 'Ajuste' },
+                { dia: 'VIE', col: 'bg-green-500', label: 'Priming' },
+                { dia: 'SAB', col: 'bg-blue-500', label: 'PARTIDO' }
+            ];
+            container.innerHTML = plan.map(p => `
+                <div class="flex flex-col items-center">
+                    <div class="w-full h-24 rounded-xl ${p.col} flex flex-col items-center justify-center text-white shadow-md border border-white/10">
+                        <span class="font-bold text-sm">${p.dia}</span>
+                        <span class="text-[10px] text-center px-1 font-medium leading-tight opacity-90">${p.label}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLibrary() {
+            const container = document.getElementById('library-container');
+            container.innerHTML = CATEGORIAS.map(cat => `
+                <div class="space-y-3">
+                    <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        ${cat.icono} ${cat.nombre}
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        ${TAREAS_DB.filter(t => t.cat === cat.id).map(t => `
+                            <button onclick="addTaskToSession(${t.id})" class="bg-white p-4 rounded-2xl border border-slate-200 text-left hover:border-blue-400 hover:shadow-md transition-all flex justify-between items-center group active:scale-[0.98]">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-700">${t.nombre}</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <div class="w-2 h-2 rounded-full ${SEMAFORO_STYLE[t.color].bg}"></div>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase">Carga: ${t.color}</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-plus text-slate-300 group-hover:text-blue-500"></i>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addTaskToSession(id) {
+            const base = TAREAS_DB.find(t => t.id === id);
+            const taskInstance = { 
+                ...base, 
+                instanceId: Date.now() + Math.random(),
+                duracion: 15 
+            };
+            currentSessionTasks.push(taskInstance);
+            updatePlannerUI();
+        }
+
+        function removeTask(instanceId) {
+            currentSessionTasks = currentSessionTasks.filter(t => t.instanceId !== instanceId);
+            updatePlannerUI();
+        }
+
+        function updatePlannerUI() {
+            const container = document.getElementById('current-tasks');
+            if(currentSessionTasks.length === 0) {
+                container.innerHTML = `<div class="text-center py-12 bg-slate-100 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 italic text-sm">Seleccioná tareas de la biblioteca</div>`;
+            } else {
+                container.innerHTML = currentSessionTasks.map((t, idx) => `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-slate-900 text-white w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs">${idx + 1}</div>
+                            <div>
+                                <p class="font-bold text-slate-800 text-sm">${t.nombre}</p>
+                                <div class="flex gap-2 mt-0.5">
+                                    <span class="text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${SEMAFORO_STYLE[t.color].bg} text-white">${t.color}</span>
+                                    <span class="text-[10px] text-slate-500 font-bold">${t.duracion} min</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="removeTask(${t.instanceId})" class="p-2 text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                    </div>
+                `).join('');
+            }
+            calculateOverallLoad();
+        }
+
+        function calculateOverallLoad() {
+            if(currentSessionTasks.length === 0) {
+                updateIndicator('VERDE', 0, 0);
+                return;
+            }
+
+            let totalRpe = 0;
+            let totalTime = 0;
+            let counts = { ROJO: 0, NARANJA: 0, AMARILLO: 0, VERDE: 0 };
+
+            currentSessionTasks.forEach(t => {
+                totalRpe += t.rpe;
+                totalTime += t.duracion;
+                counts[t.color]++;
+            });
+
+            let finalColor = 'VERDE';
+            if (counts.ROJO > 0 || counts.NARANJA > 1) finalColor = 'ROJO';
+            else if (counts.NARANJA > 0 || counts.AMARILLO > 2) finalColor = 'NARANJA';
+            else if (counts.AMARILLO > 0) finalColor = 'AMARILLO';
+
+            updateIndicator(finalColor, (totalRpe / currentSessionTasks.length).toFixed(1), totalTime);
+        }
+
+        function updateIndicator(color, rpe, time) {
+            const style = SEMAFORO_STYLE[color];
+            const banner = document.getElementById('load-indicator');
+            banner.className = `p-5 rounded-2xl border-2 ${style.border} ${style.bg} bg-opacity-10 shadow-sm flex justify-between items-center transition-all duration-500`;
+            
+            document.getElementById('indicator-bar').className = `w-4 h-12 rounded-full ${style.bg} shadow-sm animate-pulse`;
+            document.getElementById('indicator-label').className = `text-xl font-black ${style.text} uppercase`;
+            document.getElementById('indicator-label').innerText = `${color} — ${style.label}`;
+            
+            document.getElementById('summary-time').innerText = `${time} min`;
+            document.getElementById('summary-rpe').innerText = rpe;
+        }
+
+        function saveSession() {
+            if(currentSessionTasks.length === 0) return;
+            
+            // Obtener el color actual del indicador (extrayendo el texto)
+            const colorLabel = document.getElementById('indicator-label').innerText.split(' — ')[0];
+
+            const newSession = {
+                id: Date.now(),
+                fecha: document.getElementById('input-date').value,
+                objetivo: document.getElementById('input-objective').value || 'Sin objetivo',
+                tareasCount: currentSessionTasks.length,
+                totalTime: document.getElementById('summary-time').innerText,
+                color: colorLabel,
+                rpe: document.getElementById('summary-rpe').innerText
+            };
+
+            savedSessions.unshift(newSession);
+            localStorage.setItem('futsal_sessions', JSON.stringify(savedSessions));
+            
+            // Reset y volver
+            currentSessionTasks = [];
+            document.getElementById('input-objective').value = '';
+            updatePlannerUI();
+            switchTab('dashboard');
+        }
+
+        function renderSessionsList() {
+            const container = document.getElementById('sessions-list');
+            if(savedSessions.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center text-slate-400">
+                        <i class="fas fa-clipboard-list text-5xl mb-3 opacity-20"></i>
+                        <p class="font-medium">No hay sesiones esta semana.</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = savedSessions.slice(0, 5).map(s => `
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between group hover:border-blue-200 transition-colors">
+                    <div class="flex items-center gap-4">
+                        <div class="w-3 h-12 rounded-full ${SEMAFORO_STYLE[s.color].bg} shadow-sm"></div>
+                        <div>
+                            <p class="font-bold text-slate-800">${s.fecha} - <span class="text-blue-600">${s.objetivo}</span></p>
+                            <p class="text-xs text-slate-500 font-medium">${s.tareasCount} tareas • ${s.totalTime} • RPE ${s.rpe}</p>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-300"></i>
+                </div>
+            `).join('');
+        }
+
+        function renderHistoryTable() {
+            const body = document.getElementById('history-table-body');
+            body.innerHTML = savedSessions.map(s => `
+                <tr class="hover:bg-slate-50/50">
+                    <td class="px-4 py-3 font-bold text-slate-700">${s.fecha}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black text-white ${SEMAFORO_STYLE[s.color].bg}">
+                            ${s.color}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-medium text-slate-500">${s.totalTime}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Ejecutar al cargar
+        init();
+    </script>
+</body>
+</html>
